@@ -1505,7 +1505,46 @@
             });
         }
 
+        const CHART_START_DATE = '2026-11-01';   // graphs begin here; nothing earlier is drawn or counted as "previous"
+
+        // Draws the numbers permanently on top of every bar (replaces the hover box)
+        const barTopLabelsPlugin = {
+            id: 'barTopLabels',
+            afterDatasetsDraw(chart, args, opts) {
+                const trend = opts && opts.trend;
+                if (!trend || !trend.length) return;
+                const meta = chart.getDatasetMeta(0);
+                const ctx = chart.ctx;
+                const slot = chart.scales.x.width / Math.max(1, trend.length);
+                const compact = slot < 70;
+                const fs = slot < 52 ? 9 : 11;
+                ctx.save();
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                meta.data.forEach((bar, i) => {
+                    const t = trend[i];
+                    if (!t) return;
+                    let y = bar.y - 5;
+                    if (t.delta !== null && t.delta !== undefined) {
+                        const up = t.delta > 0, down = t.delta < 0;
+                        const txt = up ? (compact ? `▲ ${t.delta}` : `▲ Grew by = ${t.delta}`)
+                                  : down ? (compact ? `▼ ${Math.abs(t.delta)}` : `▼ Dropped by = ${Math.abs(t.delta)}`)
+                                  : (compact ? '– 0' : 'No change');
+                        ctx.font = `700 ${fs}px Inter, sans-serif`;
+                        ctx.fillStyle = up ? '#059669' : down ? '#e11d48' : '#64748b';
+                        ctx.fillText(txt, bar.x, y);
+                        y -= fs + 4;
+                    }
+                    ctx.font = `800 ${fs + 1}px Inter, sans-serif`;
+                    ctx.fillStyle = '#0f172a';
+                    ctx.fillText(compact ? `${t.total}` : `Total = ${t.total}`, bar.x, y);
+                });
+                ctx.restore();
+            }
+        };
+
         function buildVerticalBarConfig(serviceList, barColor, hoverColor, borderColor, emptyLabel) {
+            serviceList = serviceList.filter(s => String(s.service_date) >= CHART_START_DATE);
             const trend = getServiceTrend(serviceList);
             const labels = serviceList.map(s => {
                 const d = new Date(s.service_date + 'T00:00:00');
@@ -1540,39 +1579,12 @@
                     indexAxis: 'x',
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: { mode: 'index', intersect: false },
+                    events: [],
+                    layout: { padding: { top: 48 } },
                     plugins: {
                         legend: { display: false },
-                        tooltip: {
-                            backgroundColor: '#0f172a',
-                            titleFont: { family: 'Inter', size: 12, weight: 'bold' },
-                            bodyFont: { family: 'Inter', size: 12 },
-                            padding: 10,
-                            cornerRadius: 10,
-                            displayColors: false,
-                            footerFont: { family: 'Inter', size: 12, weight: 'bold' },
-                            callbacks: {
-                                label: (context) => {
-                                    const t = trend[context.dataIndex];
-                                    if (!t) return ` ${context.parsed.y} Attended`;
-                                    if (t.total === 0) return ' No attendance logged';
-                                    if (t.delta === null) return ' First recorded service';
-                                    if (t.delta > 0) return ` ▲ +${t.delta} from previous`;
-                                    if (t.delta < 0) return ` ▼ −${Math.abs(t.delta)} from previous`;
-                                    return ' No change from previous';
-                                },
-                                labelTextColor: (context) => {
-                                    const t = trend[context.dataIndex];
-                                    if (t && t.delta > 0) return '#4ade80';
-                                    if (t && t.delta < 0) return '#f87171';
-                                    return '#e2e8f0';
-                                },
-                                footer: (items) => {
-                                    const t = items.length ? trend[items[0].dataIndex] : null;
-                                    return t ? `Total attendance: ${t.total}` : '';
-                                }
-                            }
-                        }
+                        tooltip: { enabled: false },
+                        barTopLabels: { trend }
                     },
                     scales: {
                         x: {
@@ -1584,6 +1596,7 @@
                         },
                         y: {
                             beginAtZero: true,
+                            grace: '12%',
                             ticks: {
                                 stepSize: 1,
                                 precision: 0,
@@ -1595,7 +1608,8 @@
                             }
                         }
                     }
-                }
+                },
+                plugins: [barTopLabelsPlugin]
             };
         }
 
@@ -3184,7 +3198,17 @@
             return '';
         }
 
+        // ---------- N / R column: N = first timer, R = regular member ----------
+        // Used only to set the category while importing. It is never stored or shown as text.
+        const MARKER_CELL_RE = /^[NRnr]$/;
+        function statusFromLetter(v) {
+            const t = String(v || '').trim().toUpperCase();
+            return t === 'N' ? 'FIRST_TIMER' : t === 'R' ? 'MEMBER' : '';
+        }
+
         function detectCategory(text, fallback) {
+            const letterCat = statusFromLetter(text);
+            if (letterCat) return letterCat;
             const t = String(text || '').toLowerCase();
             if (/first|visitor|guest/.test(t)) return 'FIRST_TIMER';
             if (/convert|saved|salvation|born/.test(t)) return 'NEW_CONVERT';
@@ -3206,19 +3230,36 @@
                     else if (map.phone === undefined && /phone|tel|mobile|contact|number|cell/.test(l)) map.phone = ci;
                     else if (map.location === undefined && /location|residence|area|address|estate|town/.test(l)) map.location = ci;
                     else if (map.date === undefined && /date|last|attend|visit/.test(l)) map.date = ci;
-                    else if (map.category === undefined && /categor|type/.test(l)) map.category = ci;
+                    else if (map.category === undefined && /categor|type|status|n\s*\/\s*r/.test(l)) map.category = ci;
                     else if (map.assigned === undefined && /assign|follow|mentor|disciple/.test(l)) map.assigned = ci;
                 });
             }
 
             const people = [];
+            // PDF: the N/R letters sit in one column. Find where (the position most single N/R cells share)
+            // and only read letters from there, so nothing inside a name can ever be mistaken for a marker.
+            const bucketOf = x => Math.round(x / 10);
+            let markerBucket = null;
+            if (isPdf) {
+                const counts = new Map();
+                rows.forEach(r => (r.xs || []).forEach((x, j) => {
+                    if (MARKER_CELL_RE.test(String(r[j] || '').trim())) counts.set(bucketOf(x), (counts.get(bucketOf(x)) || 0) + 1);
+                }));
+                let best = 0;
+                counts.forEach((c, b) => { if (c > best) { best = c; markerBucket = b; } });
+            }
+            const inMarkerColumn = (ri, ci) => {
+                if (!isPdf) return true;
+                const xs = rows[ri] && rows[ri].xs;
+                return markerBucket !== null && !!xs && Math.abs(bucketOf(xs[ci]) - markerBucket) <= 1;
+            };
             const phoneRe = /(\+?\d[\d\s\-().]{7,}\d)/;
             const pdfHasPhones = isPdf && clean.some(r => phoneRe.test(r.map(String).join(' ')));
             const start = headerIdx >= 0 ? headerIdx + 1 : 0;
 
             for (let i = start; i < clean.length; i++) {
                 const row = clean[i];
-                let name = '', phone = '', location = '', date = '', cat = '', assigned = '';
+                let name = '', phone = '', location = '', date = '', cat = '', assigned = '', marker = '';
 
                 if (map && map.name !== undefined) {
                     name = row[map.name] || '';
@@ -3227,8 +3268,18 @@
                     date = map.date !== undefined ? row[map.date] : '';
                     cat = map.category !== undefined ? String(row[map.category] || '') : '';
                     assigned = map.assigned !== undefined ? String(row[map.assigned] || '') : '';
+                    if (!statusFromLetter(cat)) {
+                        const used = new Set(Object.values(map));
+                        row.forEach((c, ci) => {
+                            if (!marker && !used.has(ci) && MARKER_CELL_RE.test(String(c).trim()) && inMarkerColumn(i, ci)) marker = statusFromLetter(c);
+                        });
+                    }
                 } else if (isPdf || row.length === 1) {
-                    const text = row.map(String).join(' ').replace(/\s+/g, ' ').trim();
+                    const cellsNoMark = row.filter((c, ci) => {
+                        if (!marker && MARKER_CELL_RE.test(String(c).trim()) && inMarkerColumn(i, ci)) { marker = statusFromLetter(c); return false; }
+                        return true;
+                    });
+                    const text = cellsNoMark.map(String).join(' ').replace(/\s+/g, ' ').trim();
                     if (!text || /^page\s*\d+/i.test(text)) continue;
                     const pm = text.match(phoneRe);
                     if (pm) {
@@ -3263,7 +3314,8 @@
                     phone: digits.length >= 7 ? phone.trim() : 'No Phone',
                     location: location.trim(),
                     date: normalizeDate(date),
-                    category: detectCategory(cat, defaultCategory),
+                    category: marker || detectCategory(cat, defaultCategory),
+                    marked: !!marker || !!statusFromLetter(cat),
                     assigned: /^unassigned$/i.test(assigned.trim()) ? '' : assigned.trim()
                 });
             }
@@ -3288,15 +3340,16 @@
                 const flush = () => {
                     if (!line.length) return;
                     line.sort((a, b) => a.x - b.x);
-                    const cells = [];
-                    let cur = line[0].s, prevEnd = line[0].x + line[0].w;
+                    const cells = [], xs = [];
+                    let cur = line[0].s, curX = line[0].x, prevEnd = line[0].x + line[0].w;
                     for (let k = 1; k < line.length; k++) {
                         const it = line[k], gap = it.x - prevEnd;
-                        if (gap > 10) { cells.push(cur); cur = it.s; }
+                        if (gap > 10) { cells.push(cur); xs.push(curX); cur = it.s; curX = it.x; }
                         else cur += (gap > 1 ? ' ' : '') + it.s;
                         prevEnd = it.x + it.w;
                     }
-                    cells.push(cur);
+                    cells.push(cur); xs.push(curX);
+                    cells.xs = xs;
                     rows.push(cells);
                     line = [];
                 };
@@ -3384,8 +3437,16 @@
                 throw new Error(`All ${people.length} people in this file are already recorded.`);
             }
 
+            const anyMarked = people.some(pp => pp.marked);
+            let markNote = '';
+            if (anyMarked) {
+                const unmarked = fresh.filter(pp => !pp.marked);
+                markNote = `\nFirst timers: ${fresh.filter(pp => pp.marked && pp.category === 'FIRST_TIMER').length}` +
+                    `\nRegular members: ${fresh.filter(pp => pp.marked && pp.category === 'MEMBER').length}` +
+                    (unmarked.length ? `\nNot marked in the file: ${unmarked.length} (added as ${CATEGORY_LABELS[defaultCategory] || 'Member'}): ${unmarked.slice(0, 4).map(pp => pp.name).join(', ')}${unmarked.length > 4 ? ', ...' : ''}` : '') + '\n';
+            }
             const preview = fresh.slice(0, 5).map(pp => '• ' + pp.name).join('\n');
-            const okToGo = confirm(`Found ${fresh.length} new ${fresh.length === 1 ? 'person' : 'people'}${skipped ? ` (${skipped} already recorded, skipped)` : ''}.\n\n${preview}${fresh.length > 5 ? '\n• ...' : ''}\n\nAdd them now?`);
+            const okToGo = confirm(`Found ${fresh.length} new ${fresh.length === 1 ? 'person' : 'people'}${skipped ? ` (${skipped} already recorded, skipped)` : ''}.\n\n${preview}${fresh.length > 5 ? '\n• ...' : ''}\n${markNote}\nAdd them now?`);
             if (!okToGo) { say('Import cancelled.'); return; }
 
             const base = Date.now();
@@ -3495,6 +3556,116 @@
             return nameMatches(memberList);
         }
 
+        // ---------- Fuzzy attendance matching (typos, swapped names, other details) + review ----------
+        function fzClean(n) {
+            return String(n || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(Boolean);
+        }
+        function fzDist(a, b) {            // edit distance where swapping two neighbouring letters counts as one edit
+            const m = a.length, n = b.length;
+            const d = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
+            for (let j = 0; j <= n; j++) d[0][j] = j;
+            for (let i = 1; i <= m; i++) {
+                for (let j = 1; j <= n; j++) {
+                    const c = a[i - 1] === b[j - 1] ? 0 : 1;
+                    d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + c);
+                    if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+                }
+            }
+            return d[m][n];
+        }
+        function fzTokSim(a, b) {
+            if (a === b) return 1;
+            if (a.length === 1 || b.length === 1) return a[0] === b[0] ? 0.6 : 0;           // initial vs full name
+            const L = Math.max(a.length, b.length), d = fzDist(a, b);
+            let s = 1 - d / L;
+            if (d === 1 && L >= 3) s = Math.max(s, 0.8);
+            if (d === 2 && L >= 7) s = Math.max(s, 0.75);
+            const short = a.length < b.length ? a : b, long = a.length < b.length ? b : a;
+            if (short.length >= 3 && long.startsWith(short)) s = Math.max(s, 0.8);           // Chris / Christopher
+            return s >= 0.7 ? s : 0;
+        }
+        function fzNameScore(ta, tb) {         // order does not matter: each word is paired with its best partner
+            const pairs = [];
+            ta.forEach((x, i) => tb.forEach((y, j) => { const s = fzTokSim(x, y); if (s) pairs.push([s, i, j]); }));
+            pairs.sort((p, q) => q[0] - p[0]);
+            const ua = new Set(), ub = new Set();
+            let sum = 0, hits = 0;
+            pairs.forEach(([s, i, j]) => { if (!ua.has(i) && !ub.has(j)) { ua.add(i); ub.add(j); sum += s; hits++; } });
+            const n = Math.min(ta.length, tb.length), m = Math.max(ta.length, tb.length);
+            if (!n) return { score: 0, hits: 0 };
+            let score = sum / n;
+            if (n !== m) score *= 0.92;
+            if (n === 1) score *= 0.7;           // one word alone is weak evidence
+            return { score, hits };
+        }
+        function fuzzyMatchAttendancePerson(p, memberList) {
+            const ta = fzClean(p.name);
+            if (!ta.length) return { status: 'none' };
+            const pd = String(p.phone || '').replace(/\D/g, '').slice(-9);
+            const loc = String(p.location || '').toLowerCase().trim();
+            const scored = [];
+            memberList.forEach(m => {
+                const tb = fzClean(m.name);
+                if (!tb.length) return;
+                const ns = fzNameScore(ta, tb);
+                let conf = ns.score;
+                const reasons = [];
+                if (ns.score > 0) reasons.push('name ' + Math.round(ns.score * 100) + '%');
+                const md = String(m.phone || '').replace(/\D/g, '').slice(-9);
+                if (pd.length === 9 && md.length === 9) {
+                    const dd = fzDist(pd, md);
+                    if (dd === 0) { conf += 0.35; reasons.push('same phone'); }
+                    else if (dd === 1) { conf += 0.25; reasons.push('phone differs by one digit'); }
+                }
+                const ml = String(m.location || '').toLowerCase().trim();
+                if (loc && ml && fzTokSim(loc, ml) >= 0.8) { conf += 0.05; reasons.push('same location'); }
+                if (ns.score > 0 && conf >= 0.75) scored.push({ member: m, conf: Math.min(1, conf), reasons });
+            });
+            if (!scored.length) return { status: 'none' };
+            scored.sort((x, y) => y.conf - x.conf);
+            if (scored.length > 1 && scored[0].conf - scored[1].conf < 0.07) return { status: 'ambiguous' };
+            return { status: 'close', member: scored[0].member, conf: scored[0].conf, reasons: scored[0].reasons };
+        }
+
+        function reviewCloseMatches(items, srv) {
+            return new Promise(resolve => {
+                const esc = (v) => escapeHtml(String(v == null ? '' : v));
+                const wrap = document.createElement('div');
+                wrap.className = 'fixed inset-0 bg-slate-900/60 flex items-end sm:items-center justify-center p-3';
+                wrap.style.zIndex = '99999';
+                wrap.innerHTML = `
+                    <div class="bg-slate-50 w-full max-w-lg max-h-[85vh] rounded-2xl shadow-xl flex flex-col overflow-hidden">
+                        <div class="p-4 border-b border-slate-200 bg-white">
+                            <h3 class="text-sm font-black text-slate-900">Check these close matches</h3>
+                            <p class="text-xs text-slate-500 mt-1">${items.length} name${items.length === 1 ? '' : 's'} in the file are not exact but look like someone on your list (${esc(srv.day_of_week || 'Service')} ${esc(srv.service_date)}). Tick the ones that are right.</p>
+                        </div>
+                        <div class="p-3 space-y-2 overflow-y-auto flex-1">
+                            ${items.map((it, i) => `
+                                <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-white cursor-pointer">
+                                    <input type="checkbox" data-i="${i}" ${it.conf >= 0.85 ? 'checked' : ''} class="mt-0.5 h-5 w-5 rounded border-slate-300 text-indigo-600" />
+                                    <span class="text-xs">
+                                        <span class="block font-bold text-slate-900">${esc(it.p.name)} <span class="text-slate-400 font-semibold">(in file)</span></span>
+                                        <span class="block text-slate-700">looks like <b>${esc(it.member.name)}</b>${it.member.phone && it.member.phone !== 'No Phone' ? ' • ' + esc(it.member.phone) : ''}</span>
+                                        <span class="block text-[10px] text-slate-500 mt-0.5">${Math.round(it.conf * 100)}% match • ${esc(it.reasons.join(', '))}</span>
+                                    </span>
+                                </label>`).join('')}
+                        </div>
+                        <div class="p-3 border-t border-slate-200 bg-white flex gap-2">
+                            <button type="button" data-act="skip" class="flex-1 py-2.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-700">Skip all</button>
+                            <button type="button" data-act="ok" class="flex-1 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 text-white">Use ticked matches</button>
+                        </div>
+                    </div>`;
+                document.body.appendChild(wrap);
+                const finish = (useTicked) => {
+                    const chosen = useTicked ? items.filter((it, i) => wrap.querySelector(`input[data-i="${i}"]`).checked) : [];
+                    wrap.remove();
+                    resolve(chosen);
+                };
+                wrap.querySelector('[data-act="ok"]').onclick = () => finish(true);
+                wrap.querySelector('[data-act="skip"]').onclick = () => finish(false);
+            });
+        }
+
         async function handleAttendanceUpload(e) {
             const file = e.target.files && e.target.files[0];
             const statusEl = document.getElementById('attendance-upload-status');
@@ -3521,16 +3692,41 @@
                     const d = String(m.phone || '').replace(/\D/g, '');
                     if (d.length >= 9) { const k = d.slice(-9); (byPhone.get(k) || byPhone.set(k, []).get(k)).push(m); }
                 });
-                const toMark = new Map(), notFound = [], unclear = [];
+                const toMark = new Map(), notFound = [], unclear = [], close = [];
                 let already = 0;
+                const exactIds = new Set();
                 people.forEach(p => {
                     const r = matchAttendancePerson(p, byPhone, members);
                     if (r.status === 'ok') {
+                        exactIds.add(String(r.member.id));
                         if (r.member.attendance && attendanceIsPresent(r.member.attendance[srv.id])) already++;
                         else toMark.set(String(r.member.id), r.member);
                     } else if (r.status === 'ambiguous') unclear.push(p.name);
-                    else notFound.push(p.name);
+                    else {
+                        // no exact match: look for the nearest name / details (typos, swapped names, near-identical phone)
+                        const fz = fuzzyMatchAttendancePerson(p, members);
+                        if (fz.status === 'close') close.push({ p, member: fz.member, conf: fz.conf, reasons: fz.reasons });
+                        else if (fz.status === 'ambiguous') unclear.push(p.name);
+                        else notFound.push(p.name);
+                    }
                 });
+                if (close.length) {
+                    // one member can only be claimed once: keep the strongest, and skip anyone already matched exactly
+                    close.sort((x, y) => y.conf - x.conf);
+                    const claimed = new Set(exactIds);
+                    const usable = [];
+                    close.forEach(it => {
+                        const id = String(it.member.id);
+                        if (claimed.has(id)) { notFound.push(it.p.name); return; }
+                        claimed.add(id);
+                        usable.push(it);
+                    });
+                    const shown = usable.filter(it => !(it.member.attendance && attendanceIsPresent(it.member.attendance[srv.id])));
+                    already += usable.length - shown.length;
+                    const chosen = shown.length ? await reviewCloseMatches(shown, srv) : [];
+                    shown.forEach(it => { if (!chosen.includes(it)) notFound.push(it.p.name); });
+                    chosen.forEach(it => toMark.set(String(it.member.id), it.member));
+                }
                 if (!toMark.size) {
                     say(already ? `Everyone found in the file is already marked present (${already}).` : 'Nobody in the file matched your member list.');
                     return;
