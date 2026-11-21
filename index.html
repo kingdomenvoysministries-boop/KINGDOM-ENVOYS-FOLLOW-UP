@@ -97,7 +97,7 @@
                     New Converts <span id="badge-nc-nav" class="px-1.5 py-0.2 bg-purple-100 text-purple-700 rounded-full text-[10px]">0</span>
                 </button>
                 <button onclick="switchTab('soulwinning')" id="nav-btn-soulwinning" class="nav-tab px-3 py-1.5 rounded-lg text-xs font-bold transition text-slate-600 hover:text-indigo-600">Soul Winning</button>
-                <button onclick="switchTab('callreport')" id="nav-btn-callreport" class="admin-only hidden nav-tab px-3 py-1.5 rounded-lg text-xs font-bold transition text-slate-600 hover:text-indigo-600">Call Report</button>
+                <button onclick="switchTab('callreport')" id="nav-btn-callreport" class="nav-tab px-3 py-1.5 rounded-lg text-xs font-bold transition text-slate-600 hover:text-indigo-600">Call Report</button>
                 <button onclick="switchTab('blackzone')" id="nav-btn-blackzone" class="nav-tab px-3 py-1.5 rounded-lg text-xs font-bold transition text-rose-600 hover:bg-rose-50 flex items-center gap-1">
                     <i data-lucide="shield-alert" class="w-3.5 h-3.5"></i> Black Zone
                 </button>
@@ -303,6 +303,7 @@
                     <button onclick="setHealthFilter('ORANGE')" id="filter-btn-ORANGE" class="health-filter-btn shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">Orange</button>
                     <button onclick="setHealthFilter('RED')" id="filter-btn-RED" class="health-filter-btn shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">Red</button>
                     <button onclick="setHealthFilter('BLACK')" id="filter-btn-BLACK" class="health-filter-btn shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">Black Zone</button>
+                    <button onclick="setHealthFilter('REVIEW')" id="filter-btn-REVIEW" class="health-filter-btn shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">Needs review <span id="review-count"></span></button>
                 </div>
 
                 <div id="members-mobile-cards" class="md:hidden space-y-3">
@@ -680,7 +681,7 @@
             <i data-lucide="megaphone" class="w-4 h-4"></i>
             <span class="whitespace-nowrap">Soul Winning</span>
         </button>
-        <button onclick="switchTab('callreport')" id="mob-nav-callreport" class="admin-only hidden mob-nav-btn flex flex-col items-center justify-center py-1 px-2 rounded-xl text-slate-500 font-semibold text-[10px] gap-0.5">
+        <button onclick="switchTab('callreport')" id="mob-nav-callreport" class="mob-nav-btn flex flex-col items-center justify-center py-1 px-2 rounded-xl text-slate-500 font-semibold text-[10px] gap-0.5">
             <i data-lucide="phone-call" class="w-4 h-4"></i>
             <span class="whitespace-nowrap">Call Report</span>
         </button>
@@ -1760,6 +1761,7 @@
                     ${row('Attendance', escapeHtml(sundayAttendanceText(m)))}
                     ${row('Health zone', getZoneBadgeHTML(m.computedZone))}
                     ${row('Category', getCategoryBadgeHTML(m.member_category) || 'Member')}
+                    ${memberReviewReasons(m).length ? row('Needs review', `<span class="text-amber-700">${escapeHtml(memberReviewReasons(m).join(', '))}</span>`) : ''}
                 </div>
                 <div class="admin-only ${isAdmin ? '' : 'hidden'} flex items-center gap-2 pt-3 mt-3 border-t border-slate-200/70">
                     <button onclick="openEditMemberModal(${m.id})" class="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-bold">Edit</button>
@@ -1772,6 +1774,8 @@
             const mobileContainer = document.getElementById('members-mobile-cards');
             const filtered = getMembersForDownload();
 
+            const reviewCountEl = document.getElementById('review-count');
+            if (reviewCountEl) { const rc = members.filter(m => memberReviewReasons(m).length).length; reviewCountEl.textContent = rc ? `(${rc})` : ''; }
             const expBtn = document.getElementById('members-expand-all');
             if (expBtn) expBtn.innerText = (filtered.length && filtered.every(m => expandedMembers.has(String(m.id)))) ? 'Collapse all' : 'Expand all';
 
@@ -1789,7 +1793,7 @@
                     <button type="button" onclick="toggleMemberRow('${id}')" class="w-full text-left p-4 flex items-center gap-3">
                         <span class="w-6 shrink-0 text-xs font-black text-slate-400">${i + 1}</span>
                         <span class="min-w-0 flex-1">
-                            <span class="block text-sm font-extrabold text-slate-900 truncate">${escapeHtml(m.name)}</span>
+                            <span class="block text-sm font-extrabold text-slate-900 truncate">${escapeHtml(m.name)}${memberReviewReasons(m).length ? ' <span class="align-middle px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded-md text-[10px] font-bold">Review</span>' : ''}</span>
                             <span class="block text-xs text-slate-600 mt-0.5">${escapeHtml(m.phone)}</span>
                         </span>
                         <span class="text-slate-400 text-xs shrink-0">${open ? '&#9650;' : '&#9660;'}</span>
@@ -1804,7 +1808,7 @@
                 return `
                 <tr onclick="toggleMemberRow('${id}')" class="hover:bg-slate-50/80 transition cursor-pointer ${open ? 'bg-slate-50/80' : ''}">
                     <td class="p-3 font-black text-slate-400">${i + 1}</td>
-                    <td class="p-3 font-bold text-slate-900">${escapeHtml(m.name)}</td>
+                    <td class="p-3 font-bold text-slate-900">${escapeHtml(m.name)}${memberReviewReasons(m).length ? ' <span class="px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded-md text-[10px] font-bold">Review</span>' : ''}</td>
                     <td class="p-3 text-slate-600 flex items-center justify-between gap-2"><span>${escapeHtml(m.phone)}</span><span class="text-slate-400 text-[10px]">${open ? '&#9650;' : '&#9660;'}</span></td>
                 </tr>
                 ${open ? `<tr class="bg-slate-50/60"><td></td><td colspan="2" class="p-4">${memberDetailsHTML(m)}</td></tr>` : ''}`;
@@ -2482,7 +2486,7 @@
         }
 
         function switchTab(tabId) {
-            if ((tabId === 'services' || tabId === 'callreport') && !isAdmin) tabId = 'dashboard';
+            if (tabId === 'services' && !isAdmin) tabId = 'dashboard';
             activeTab = tabId;
             document.querySelectorAll('.tab-section').forEach(el => el.classList.add('hidden'));
             const targetSection = document.getElementById(`tab-${tabId}`);
@@ -2680,7 +2684,7 @@
             try { const c = await getAdminAuthClient(); if (c) await c.auth.signOut(); } catch (e) {}
             isAdmin = false;
             applyAdminUI();
-            if (activeTab === 'services' || activeTab === 'callreport') switchTab('dashboard');
+            if (activeTab === 'services') switchTab('dashboard');
             showToast('Signed out');
         }
 
@@ -3513,6 +3517,8 @@
                     `\nRegular members: ${fresh.filter(pp => pp.marked && pp.category === 'MEMBER').length}` +
                     (unmarked.length ? `\nNot marked in the file: ${unmarked.length} (added as ${CATEGORY_LABELS[defaultCategory] || 'Member'}): ${unmarked.slice(0, 4).map(pp => pp.name).join(', ')}${unmarked.length > 4 ? ', ...' : ''}` : '') + '\n';
             }
+            const needReview = fresh.filter(pp => memberReviewReasons({ name: pp.name, phone: pp.phone, member_category: pp.category }).length).length;
+            if (needReview) markNote += `\nNeeds review (one name or no phone): ${needReview}\n`;
             const preview = fresh.slice(0, 5).map(pp => '• ' + pp.name).join('\n');
             const okToGo = confirm(`Found ${fresh.length} new ${fresh.length === 1 ? 'person' : 'people'}${skipped ? ` (${skipped} already recorded, skipped)` : ''}.\n\n${preview}${fresh.length > 5 ? '\n• ...' : ''}\n${markNote}\nAdd them now?`);
             if (!okToGo) { say('Import cancelled.'); return; }
@@ -3849,11 +3855,22 @@
         }
 
         // ---------- Download members list (PDF / Excel): exactly what the Members list shows ----------
+        // Church members (not first timers / new converts) whose details are incomplete need a review
+        const NAME_TITLES = new Set(['pastor', 'pst', 'ps', 'minister', 'min', 'rev', 'reverend', 'apostle', 'prophet', 'prophetess', 'bishop', 'evangelist', 'deacon', 'deaconess', 'elder', 'brother', 'sister', 'bro', 'sis', 'mr', 'mrs', 'miss', 'ms', 'dr', 'prof', 'mama', 'mzee']);
+        function memberReviewReasons(m) {
+            if (!m || (m.member_category || 'MEMBER') !== 'MEMBER') return [];
+            const reasons = [];
+            const words = String(m.name || '').toLowerCase().replace(/[^a-z\s'-]/g, ' ').split(/\s+/).filter(w => w && !NAME_TITLES.has(w));
+            if (words.length < 2) reasons.push('Only one name');
+            if (String(m.phone || '').replace(/\D/g, '').length < 9) reasons.push('No valid phone number');
+            return reasons;
+        }
+
         function getMembersForDownload() {
             const search = ((document.getElementById('member-search') || {}).value || '').toLowerCase();
             return members.filter(m => {
                 const matchesSearch = m.name.toLowerCase().includes(search) || m.phone.toLowerCase().includes(search) || (m.location || '').toLowerCase().includes(search);
-                const matchesZone = currentHealthFilter === 'ALL' || m.computedZone === currentHealthFilter;
+                const matchesZone = currentHealthFilter === 'ALL' || (currentHealthFilter === 'REVIEW' ? memberReviewReasons(m).length > 0 : m.computedZone === currentHealthFilter);
                 return matchesSearch && matchesZone;
             }).sort((x, y) => x.name.localeCompare(y.name));
         }
