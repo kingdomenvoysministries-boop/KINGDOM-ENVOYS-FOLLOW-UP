@@ -437,6 +437,9 @@
                         <p class="text-[11px] text-slate-500">Marks everyone in the file present for the service date chosen above.</p>
                     </div>
                     <p id="attendance-upload-status" class="text-xs font-semibold text-slate-700"></p>
+                    <div class="flex justify-end">
+                        <button type="button" onclick="deleteServiceAttendance()" class="text-[11px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-3 py-2 rounded-xl transition">Delete attendance for this service</button>
+                    </div>
                     <div id="attendance-admin-summary" class="text-xs font-semibold text-slate-600"></div>
                     <div id="attendance-admin-list" class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                         <!-- Attendance marking list is populated dynamically -->
@@ -755,6 +758,7 @@
                         <option value="MEMBER">Regular Church Member</option>
                         <option value="FIRST_TIMER">First Timer (Visitor)</option>
                         <option value="NEW_CONVERT">New Convert (Salvation Decision)</option>
+                        <option value="REVIEW">Needs Review (from attendance upload)</option>
                     </select>
                 </div>
 
@@ -975,7 +979,7 @@
             RED:    { label: 'Red Zone',    pill: 'bg-rose-100 text-rose-800',       border: 'border-rose-200/80',    desc: 'Missed the last 2 Sundays',             rgb: [244, 63, 94] },
             BLACK:  { label: 'Black Zone',  pill: 'bg-slate-800 text-rose-300',      border: 'border-slate-300',      desc: 'Absent for more than 2 months',         rgb: [15, 23, 42] }
         };
-        const CATEGORY_LABELS = { MEMBER: 'Member', FIRST_TIMER: 'First Timer', NEW_CONVERT: 'New Convert' };
+        const CATEGORY_LABELS = { MEMBER: 'Member', FIRST_TIMER: 'First Timer', NEW_CONVERT: 'New Convert', REVIEW: 'Needs Review' };
 
         const tabOrder = ['dashboard', 'members', 'firsttimers', 'newconverts', 'services', 'blackzone'];
         const tabTitles = {
@@ -1242,6 +1246,7 @@
             if (!notes) return 'MEMBER';
             if (notes.includes('[NEW_CONVERT]')) return 'NEW_CONVERT';
             if (notes.includes('[FIRST_TIMER]')) return 'FIRST_TIMER';
+            if (notes.includes('[REVIEW]')) return 'REVIEW';
             return 'MEMBER';
         }
 
@@ -1346,9 +1351,10 @@
         async function persistMemberToCloud(m) {
             saveLocalMetaForMember(m);
 
-            let summary = (m.previous_history_summary || '').replace(/^\[(FIRST_TIMER|NEW_CONVERT)\]\s*/g, '');
+            let summary = (m.previous_history_summary || '').replace(/^\[(FIRST_TIMER|NEW_CONVERT|REVIEW)\]\s*/g, '');
             if (m.member_category === 'FIRST_TIMER') summary = `[FIRST_TIMER] ${summary}`.trim();
             if (m.member_category === 'NEW_CONVERT') summary = `[NEW_CONVERT] ${summary}`.trim();
+            if (m.member_category === 'REVIEW') summary = `[REVIEW] ${summary}`.trim();
             m.previous_history_summary = summary;
             saveLocalDataset();
 
@@ -1394,6 +1400,16 @@
                 .sort((a, b) => new Date(a.service_date) - new Date(b.service_date));
         }
 
+        // Sundays that have already happened (today or earlier)
+        function getPastSundays() {
+            return getSortedSundays().filter(s => String(s.service_date) <= referenceDateStr);
+        }
+        // Past Sundays that actually have attendance recorded. Dates with no upload yet, or still in the
+        // future, are ignored so nobody is treated as absent for a service that was never recorded.
+        function getRecordedSundays() {
+            return getPastSundays().filter(s => getServiceTotal(s) > 0);
+        }
+
         function getSortedWednesdays() {
             return services
                 .filter(s => s.day_of_week === 'Wednesday')
@@ -1405,13 +1421,28 @@
         }
 
         function computeMemberHealth(member) {
-            const sundays = getSortedSundays();
+            // People waiting for review (added from an attendance upload) are counted in attendance but have no zone yet
+            if (member && member.member_category === 'REVIEW') return { zone: 'REVIEW', absenceDays: 0, lastDate: member.last_attended_date || 'N/A' };
+            const sundays = getRecordedSundays();
             if (sundays.length === 0) {
                 return { zone: 'GREEN', absenceDays: 0, lastDate: member.last_attended_date || 'N/A' };
             }
 
             const refDate = new Date(referenceDateStr);
-            const lastAttended = member.last_attended_date ? new Date(member.last_attended_date) : null;
+            // Zones are based on SUNDAY attendance only: Wednesday attendance does not count as "last attended" here.
+            let lastAttended = null;
+            const sundaysAttended = getPastSundays().filter(s => member.attendance && attendanceIsPresent(member.attendance[s.id]));
+            if (sundaysAttended.length) {
+                lastAttended = new Date(sundaysAttended[sundaysAttended.length - 1].service_date);
+            } else {
+                const wednesdayDates = new Set(getSortedWednesdays().map(s => String(s.service_date)));
+                if (member.last_attended_date && !wednesdayDates.has(String(member.last_attended_date))) {
+                    lastAttended = new Date(member.last_attended_date);
+                } else {
+                    // Only seen on a Wednesday (or never): the absence clock starts at the first recorded Sunday
+                    lastAttended = new Date(sundays[0].service_date);
+                }
+            }
             const absenceDays = lastAttended ? Math.floor((refDate - lastAttended) / (1000 * 60 * 60 * 24)) : 999;
 
             if (absenceDays > TWO_MONTHS_DAYS || member.follow_up_status === 'Relocated' || member.follow_up_status === 'Transferred' || member.follow_up_status === 'Voluntarily Left') {
@@ -1426,6 +1457,13 @@
 
             const attendedLast = lastSunday && member.attendance && attendanceIsPresent(member.attendance[lastSunday.id]);
             const attendedPrev = prevSunday && member.attendance && attendanceIsPresent(member.attendance[prevSunday.id]);
+
+            // Only one Sunday recorded so far: there is no "two Sundays" pattern yet.
+            // Present = green; not present = orange (missed one), never red or black after a single service.
+            if (!prevSunday) {
+                if (attendedLast) return { zone: 'GREEN', absenceDays: 0, lastDate: lastSunday.service_date };
+                return { zone: 'ORANGE', absenceDays: absenceDays < 0 ? 0 : absenceDays, lastDate: lastAttended ? member.last_attended_date : 'Recent' };
+            }
 
             if (attendedLast && attendedPrev) {
                 return { zone: 'GREEN', absenceDays: 0, lastDate: lastSunday.service_date };
@@ -2387,7 +2425,7 @@
             const reached = weekCalls.filter(c => c.outcome === 'Called').length;
             const unreachable = weekCalls.filter(c => c.outcome === 'Unreachable').length;
             const calledPeople = new Set(weekCalls.map(c => String(c.member_id))).size;
-            const notCalledAll = members.filter(m => !hasCallThisWeek(m));
+            const notCalledAll = members.filter(m => m.member_category !== 'REVIEW' && !hasCallThisWeek(m));
 
             statsEl.innerHTML = [
                 ['Calls made', weekCalls.length, 'bg-indigo-50 border-indigo-100 text-indigo-800'],
@@ -2473,6 +2511,7 @@
         }
 
         function getZoneBadgeHTML(zone) {
+            if (zone === 'REVIEW') return `<span class="px-2.5 py-1 bg-amber-100 text-amber-800 font-extrabold rounded-full text-[10px] uppercase">Review</span>`;
             if (zone === 'GREEN') return `<span class="px-2.5 py-1 bg-emerald-100 text-emerald-800 font-extrabold rounded-full text-[10px] uppercase">🟢 Green</span>`;
             if (zone === 'ORANGE') return `<span class="px-2.5 py-1 bg-amber-100 text-amber-800 font-extrabold rounded-full text-[10px] uppercase">🟠 Orange</span>`;
             if (zone === 'RED') return `<span class="px-2.5 py-1 bg-rose-100 text-rose-800 font-extrabold rounded-full text-[10px] uppercase">🔴 Red</span>`;
@@ -2482,6 +2521,7 @@
         function getCategoryBadgeHTML(category) {
             if (category === 'FIRST_TIMER') return `<span class="px-2 py-0.5 bg-sky-100 text-sky-800 font-bold rounded-md text-[10px]">1st Timer</span>`;
             if (category === 'NEW_CONVERT') return `<span class="px-2 py-0.5 bg-purple-100 text-purple-800 font-bold rounded-md text-[10px]">New Convert</span>`;
+            if (category === 'REVIEW') return `<span class="px-2 py-0.5 bg-amber-100 text-amber-800 font-bold rounded-md text-[10px]">Needs Review</span>`;
             return '';
         }
 
@@ -2889,7 +2929,7 @@
             document.getElementById('member-last-date').value = m.last_attended_date || referenceDateStr;
             document.getElementById('member-assignee').value = m.assigned_follow_up_person || '';
 
-            const cleanNotes = (m.previous_history_summary || '').replace(/^\[(FIRST_TIMER|NEW_CONVERT)\]\s*/g, '');
+            const cleanNotes = (m.previous_history_summary || '').replace(/^\[(FIRST_TIMER|NEW_CONVERT|REVIEW)\]\s*/g, '');
             document.getElementById('member-history-note').value = cleanNotes;
 
             document.getElementById('ft-invited-by').value = m.invited_by || '';
@@ -3057,7 +3097,7 @@
 
         // ---------- Zone view ----------
         function sundayAttendanceText(m) {
-            const sundays = getSortedSundays();
+            const sundays = getRecordedSundays();
             if (!sundays.length) return 'N/A';
             const attended = sundays.filter(sv => m.attendance && attendanceIsPresent(m.attendance[sv.id])).length;
             return `${attended} of ${sundays.length} Sundays`;
@@ -3351,6 +3391,7 @@
                         if (!marker && MARKER_CELL_RE.test(String(c).trim()) && inMarkerColumn(i, ci)) { marker = statusFromLetter(c); return false; }
                         return true;
                     });
+                    if (cellsNoMark.length > 1 && /^\d{1,4}[.)]?$/.test(String(cellsNoMark[0]).trim())) cellsNoMark.shift();
                     const text = cellsNoMark.map(String).join(' ').replace(/\s+/g, ' ').trim();
                     if (!text || /^page\s*\d+/i.test(text)) continue;
                     const pm = text.match(phoneRe);
@@ -3438,9 +3479,10 @@
         async function persistMembersBulk(list) {
             list.forEach(saveLocalMetaForMember);
             const payloads = list.map(m => {
-                let summary = (m.previous_history_summary || '').replace(/^\[(FIRST_TIMER|NEW_CONVERT)\]\s*/g, '');
+                let summary = (m.previous_history_summary || '').replace(/^\[(FIRST_TIMER|NEW_CONVERT|REVIEW)\]\s*/g, '');
                 if (m.member_category === 'FIRST_TIMER') summary = `[FIRST_TIMER] ${summary}`.trim();
                 if (m.member_category === 'NEW_CONVERT') summary = `[NEW_CONVERT] ${summary}`.trim();
+                if (m.member_category === 'REVIEW') summary = `[REVIEW] ${summary}`.trim();
                 m.previous_history_summary = summary;
                 return buildMemberPayload(m, summary);
             });
@@ -3693,11 +3735,11 @@
                 }
                 const ml = String(m.location || '').toLowerCase().trim();
                 if (loc && ml && fzTokSim(loc, ml) >= 0.8) { conf += 0.05; reasons.push('same location'); }
-                if (ns.score > 0 && conf >= 0.75) scored.push({ member: m, conf: Math.min(1, conf), reasons });
+                if (ns.score > 0 && conf >= 0.65) scored.push({ member: m, conf: Math.min(1, conf), reasons });
             });
             if (!scored.length) return { status: 'none' };
             scored.sort((x, y) => y.conf - x.conf);
-            if (scored.length > 1 && scored[0].conf - scored[1].conf < 0.07) return { status: 'ambiguous' };
+            if (scored.length > 1 && scored[0].conf - scored[1].conf < 0.07) return { status: 'ambiguous', member: scored[0].member, conf: scored[0].conf, reasons: scored[0].reasons, candidates: scored.slice(0, 4) };
             return { status: 'close', member: scored[0].member, conf: scored[0].conf, reasons: scored[0].reasons };
         }
 
@@ -3710,16 +3752,19 @@
                 wrap.innerHTML = `
                     <div class="bg-slate-50 w-full max-w-lg max-h-[85vh] rounded-2xl shadow-xl flex flex-col overflow-hidden">
                         <div class="p-4 border-b border-slate-200 bg-white">
-                            <h3 class="text-sm font-black text-slate-900">Check these close matches</h3>
-                            <p class="text-xs text-slate-500 mt-1">${items.length} name${items.length === 1 ? '' : 's'} in the file are not exact but look like someone on your list (${esc(srv.day_of_week || 'Service')} ${esc(srv.service_date)}). Tick the ones that are right.</p>
+                            <h3 class="text-sm font-black text-slate-900">Confirm these before they go to Review</h3>
+                            <p class="text-xs text-slate-500 mt-1">${items.length} name${items.length === 1 ? '' : 's'} in the file are not exact but look like someone on your list (${esc(srv.day_of_week || 'Service')} ${esc(srv.service_date)}). Tick the ones that are the same person (a typo or spelling difference). Anyone you leave unticked is NOT matched: people marked new become first timers, everyone else goes to Review.</p>
                         </div>
                         <div class="p-3 space-y-2 overflow-y-auto flex-1">
                             ${items.map((it, i) => `
                                 <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-white cursor-pointer">
-                                    <input type="checkbox" data-i="${i}" ${it.conf >= 0.85 ? 'checked' : ''} class="mt-0.5 h-5 w-5 rounded border-slate-300 text-indigo-600" />
+                                    <input type="checkbox" data-i="${i}" ${it.conf >= 0.85 && !it.isNew && !(it.options && it.options.length > 1) ? 'checked' : ''} class="mt-0.5 h-5 w-5 rounded border-slate-300 text-indigo-600" />
                                     <span class="text-xs">
-                                        <span class="block font-bold text-slate-900">${esc(it.p.name)} <span class="text-slate-400 font-semibold">(in file)</span></span>
-                                        <span class="block text-slate-700">looks like <b>${esc(it.member.name)}</b>${it.member.phone && it.member.phone !== 'No Phone' ? ' • ' + esc(it.member.phone) : ''}</span>
+                                        <span class="block font-bold text-slate-900">${esc(it.p.name)} <span class="text-slate-400 font-semibold">(in file${it.isNew ? ', marked new' : ''})</span></span>
+                                        ${it.options && it.options.length > 1
+                                            ? `<span class="block text-slate-700">could be one of these, pick the right one:</span>
+                                               <select data-sel="${i}" class="mt-1 w-full px-2 py-1.5 text-xs bg-white border border-slate-300 rounded-lg">${it.options.map((o, oi) => `<option value="${oi}">${esc(o.member.name)}${o.member.phone && o.member.phone !== 'No Phone' ? ' • ' + esc(o.member.phone) : ''} (${Math.round(o.conf * 100)}%)</option>`).join('')}</select>`
+                                            : `<span class="block text-slate-700">looks like <b>${esc(it.member.name)}</b>${it.member.phone && it.member.phone !== 'No Phone' ? ' • ' + esc(it.member.phone) : ''}</span>`}
                                         <span class="block text-[10px] text-slate-500 mt-0.5">${Math.round(it.conf * 100)}% match • ${esc(it.reasons.join(', '))}</span>
                                     </span>
                                 </label>`).join('')}
@@ -3732,6 +3777,11 @@
                 document.body.appendChild(wrap);
                 const finish = (useTicked) => {
                     const chosen = useTicked ? items.filter((it, i) => wrap.querySelector(`input[data-i="${i}"]`).checked) : [];
+                    chosen.forEach(it => {
+                        const idx = items.indexOf(it);
+                        const sel = wrap.querySelector(`select[data-sel="${idx}"]`);
+                        if (sel && it.options && it.options[Number(sel.value)]) it.member = it.options[Number(sel.value)].member;
+                    });
                     wrap.remove();
                     resolve(chosen);
                 };
@@ -3767,6 +3817,10 @@
                     if (d.length >= 9) { const k = d.slice(-9); (byPhone.get(k) || byPhone.set(k, []).get(k)).push(m); }
                 });
                 const toMark = new Map(), notFound = [], unclear = [], close = [];
+                const newPeople = [];                     // marked N in the file and not in the database: new first timers
+                const reviewPeople = [];                  // not matched and not marked N: counted in attendance, kept in Review for manual editing
+                const addMissing = (p, why) => { notFound.push(p.name); reviewPeople.push({ p, why }); };
+                const isNewPerson = (p) => !!(p.marked && p.category === 'FIRST_TIMER');
                 let already = 0;
                 const exactIds = new Set();
                 people.forEach(p => {
@@ -3775,13 +3829,17 @@
                         exactIds.add(String(r.member.id));
                         if (r.member.attendance && attendanceIsPresent(r.member.attendance[srv.id])) already++;
                         else toMark.set(String(r.member.id), r.member);
-                    } else if (r.status === 'ambiguous') unclear.push(p.name);
+                    } else if (r.status === 'ambiguous') {
+                        const fz0 = fuzzyMatchAttendancePerson(p, members);
+                        if (fz0.status === 'close' || fz0.status === 'ambiguous') close.push({ p, member: fz0.member, conf: fz0.conf, reasons: fz0.reasons, isNew: isNewPerson(p), options: fz0.candidates });
+                        else { unclear.push(p.name); reviewPeople.push({ p, why: 'Could be more than one member' }); }
+                    }
                     else {
                         // no exact match: look for the nearest name / details (typos, swapped names, near-identical phone)
                         const fz = fuzzyMatchAttendancePerson(p, members);
-                        if (fz.status === 'close') close.push({ p, member: fz.member, conf: fz.conf, reasons: fz.reasons });
-                        else if (fz.status === 'ambiguous') unclear.push(p.name);
-                        else notFound.push(p.name);
+                        if (fz.status === 'close' || fz.status === 'ambiguous') close.push({ p, member: fz.member, conf: fz.conf, reasons: fz.reasons, isNew: isNewPerson(p), options: fz.candidates });
+                        else if (isNewPerson(p)) newPeople.push(p);
+                        else addMissing(p, (p.marked && p.category === 'MEMBER') ? 'Marked R but not found in the members list' : 'Not marked R or N and not found in the members list');
                     }
                 });
                 if (close.length) {
@@ -3791,28 +3849,45 @@
                     const usable = [];
                     close.forEach(it => {
                         const id = String(it.member.id);
-                        if (claimed.has(id)) { notFound.push(it.p.name); return; }
+                        if (claimed.has(id)) { if (it.isNew) newPeople.push(it.p); else addMissing(it.p, 'Looks like a member who is already counted for this service'); return; }
                         claimed.add(id);
                         usable.push(it);
                     });
                     const shown = usable.filter(it => !(it.member.attendance && attendanceIsPresent(it.member.attendance[srv.id])));
                     already += usable.length - shown.length;
                     const chosen = shown.length ? await reviewCloseMatches(shown, srv) : [];
-                    shown.forEach(it => { if (!chosen.includes(it)) notFound.push(it.p.name); });
+                    shown.forEach(it => { if (!chosen.includes(it)) { if (it.isNew) newPeople.push(it.p); else addMissing(it.p, 'Possible match to a member was not confirmed'); } });
                     chosen.forEach(it => toMark.set(String(it.member.id), it.member));
                 }
-                if (!toMark.size) {
+                // one new first timer per person (the same name or phone twice in the file counts once)
+                const seenNew = new Set();
+                const newUnique = newPeople.filter(p => {
+                    const k = String(p.phone || '').replace(/\D/g, '').length >= 9 ? 'p' + String(p.phone).replace(/\D/g, '').slice(-9) : 'n' + fzClean(p.name).join(' ');
+                    if (seenNew.has(k)) return false;
+                    seenNew.add(k);
+                    return true;
+                });
+                // one review entry per person; anyone already going in as a new first timer is not repeated
+                const seenReview = new Set(seenNew);
+                const reviewUnique = reviewPeople.filter(({ p }) => {
+                    const k = String(p.phone || '').replace(/\D/g, '').length >= 9 ? 'p' + String(p.phone).replace(/\D/g, '').slice(-9) : 'n' + fzClean(p.name).join(' ');
+                    if (seenReview.has(k)) return false;
+                    seenReview.add(k);
+                    return true;
+                });
+                if (!toMark.size && !newUnique.length && !reviewUnique.length) {
                     say(already ? `Everyone found in the file is already marked present (${already}).` : 'Nobody in the file matched your member list.');
                     return;
                 }
 
-                const missing = notFound.concat(unclear);
+                const missing = [];   // nobody is dropped any more: unmatched people go to Review
                 const msg = `${srv.day_of_week || 'Service'} • ${srv.service_date}\n\n` +
                     `Names read from the file: ${people.length}\n` +
                     `• ${toMark.size} matched and will be marked present${already ? ` (${already} were already marked)` : ''}\n` +
-                    `• ${missing.length} not matched${unclear.length ? ` (${unclear.length} unclear, could be more than one person)` : ''}\n` +
-                    (missing.length ? `\nNot matched: ${missing.slice(0, 8).join(', ')}${missing.length > 8 ? ', ...' : ''}\n` : '') +
-                    `\nMark the ${toMark.size} present now?`;
+                    (newUnique.length ? `• ${newUnique.length} new first timer${newUnique.length === 1 ? '' : 's'} will be added with ${srv.service_date} as their first visit, and marked present\n` : '') +
+                    (reviewUnique.length ? `• ${reviewUnique.length} not matched and not marked N: counted in the attendance and kept in Review for manual editing (${reviewUnique.slice(0, 6).map(x => x.p.name).join(', ')}${reviewUnique.length > 6 ? ', ...' : ''})\n` : '') +
+                    `• Total attendance recorded for this service from the file: ${toMark.size + already + newUnique.length + reviewUnique.length}\n` +
+                    `\nGo ahead and save?`;
                 if (!confirm(msg)) { say('Upload cancelled.'); return; }
 
                 say('Saving...');
@@ -3824,9 +3899,45 @@
                     if (!m.last_attended_date || new Date(srv.service_date) >= new Date(m.last_attended_date)) m.last_attended_date = srv.service_date;
                     if (m.follow_up_status === 'Returned' || m.computedZone === 'BLACK') m.follow_up_status = 'Active';
                 });
-                await persistMembersBulk(list);
+                const baseId = Date.now();
+                const newFTs = newUnique.map((pp, idx) => ({
+                    id: baseId + idx * 10000 + Math.floor(Math.random() * 9999),
+                    member_category: 'FIRST_TIMER',
+                    name: pp.name,
+                    phone: pp.phone || 'No Phone',
+                    location: pp.location || '',
+                    last_attended_date: srv.service_date,
+                    previous_history_summary: `Added from attendance upload (${file.name})`,
+                    follow_up_status: 'Active',
+                    assigned_follow_up_person: '',
+                    follow_up_notes: '',
+                    invited_by: '',
+                    ft_status: 'Pending Welcome',
+                    salvation_date: '',
+                    nc_stage: 'Needs First Call',
+                    attendance: { [srv.id]: { present: true, marked_by: adminName, marked_at: when } }
+                }));
+                const newReview = reviewUnique.map(({ p, why }, idx) => ({
+                    id: baseId + (newUnique.length + idx) * 10000 + Math.floor(Math.random() * 9999),
+                    member_category: 'REVIEW',
+                    name: p.name,
+                    phone: p.phone || 'No Phone',
+                    location: p.location || '',
+                    last_attended_date: srv.service_date,
+                    previous_history_summary: `Added from attendance upload (${file.name}), ${srv.day_of_week || 'service'} ${srv.service_date}: ${why}`,
+                    follow_up_status: 'Active',
+                    assigned_follow_up_person: '',
+                    follow_up_notes: '',
+                    invited_by: '',
+                    ft_status: 'Pending Welcome',
+                    salvation_date: '',
+                    nc_stage: 'Needs First Call',
+                    attendance: { [srv.id]: { present: true, marked_by: adminName, marked_at: when } }
+                }));
+                members.push(...newFTs, ...newReview);
+                await persistMembersBulk(list.concat(newFTs, newReview));
                 renderAll();
-                const done = `Marked ${list.length} present for ${srv.day_of_week || 'service'} ${srv.service_date}` + (missing.length ? `, ${missing.length} not matched.` : '.');
+                const done = `Marked ${list.length} present` + (newFTs.length ? `, added ${newFTs.length} new first timer${newFTs.length === 1 ? '' : 's'}` : '') + (newReview.length ? `, ${newReview.length} added to Review (Members tab, Review filter)` : '') + ` for ${srv.day_of_week || 'service'} ${srv.service_date}` + (missing.length ? `, ${missing.length} not matched.` : '.');
                 say(done);
                 showToast(done);
             } catch (err) {
@@ -3834,6 +3945,68 @@
                 say(m);
                 showToast(m);
                 console.error('Attendance upload failed:', err);
+            }
+        }
+
+        // Clears the attendance of the ONE service chosen in the Service date box (other dates are not touched)
+        async function deleteServiceAttendance() {
+            try {
+                if (!isAdmin) throw new Error('Sign in as admin first.');
+                const sel = document.getElementById('attendance-admin-service');
+                const srv = services.find(x => String(x.id) === String(sel && sel.value));
+                if (!srv) throw new Error('Choose the service date first.');
+                const sid = String(srv.id);
+                const label = `${srv.day_of_week || 'Service'} ${srv.service_date}`;
+                const withAtt = members.filter(m => m.attendance && Object.prototype.hasOwnProperty.call(m.attendance, srv.id));
+                // First timers that were created by an upload and have attendance for no other service
+                const addedFT = members.filter(m => (m.member_category === 'FIRST_TIMER' || m.member_category === 'REVIEW')
+                    && /attendance upload/i.test(m.previous_history_summary || '')
+                    && m.attendance && Object.keys(m.attendance).length
+                    && Object.keys(m.attendance).every(k => String(k) === sid));
+                if (!withAtt.length && !addedFT.length) { showToast(`There is no attendance recorded for ${label}.`); return; }
+                if (!confirm(`Delete attendance for ${label} only?\n\nThis clears the attendance of ${withAtt.length} people for this one service. All other dates stay as they are. This cannot be undone.`)) return;
+                const typed = prompt('Type DELETE to confirm.');
+                if (String(typed || '').trim().toUpperCase() !== 'DELETE') { showToast('Cancelled. Nothing was deleted.'); return; }
+                let removeFT = false;
+                if (addedFT.length) {
+                    removeFT = confirm(`${addedFT.length} first timer${addedFT.length === 1 ? ' was' : 's were'} added from the ${label} upload and have no other attendance.\n\nOK = delete them too, so the next upload starts clean.\nCancel = keep them.`);
+                }
+                const removeIds = removeFT ? new Set(addedFT.map(m => String(m.id))) : new Set();
+                if (removeIds.size) {
+                    members = members.filter(m => !removeIds.has(String(m.id)));
+                    const ids = Array.from(removeIds).map(id => (addedFT.find(m => String(m.id) === id) || {}).id);
+                    for (let i = 0; i < ids.length; i += 100) {
+                        const chunk = ids.slice(i, i + 100);
+                        if (!window.supabaseClient) { chunk.forEach(id => queuePendingOp({ type: 'delete', table: 'church_members', id })); continue; }
+                        try {
+                            const { error } = await window.supabaseClient.from('church_members').delete().in('id', chunk);
+                            if (error) throw error;
+                        } catch (err) {
+                            chunk.forEach(id => queuePendingOp({ type: 'delete', table: 'church_members', id }));
+                            reportCloudError('delete', err);
+                        }
+                    }
+                }
+                const toClear = members.filter(m => m.attendance && Object.prototype.hasOwnProperty.call(m.attendance, srv.id));
+                toClear.forEach(m => {
+                    delete m.attendance[srv.id];
+                    // If their "last attended" was this service, move it back to their latest remaining attendance
+                    if (String(m.last_attended_date) === String(srv.service_date)) {
+                        const remaining = services
+                            .filter(x => attendanceIsPresent(m.attendance[x.id]))
+                            .sort((x, y) => new Date(y.service_date) - new Date(x.service_date))[0];
+                        if (remaining) m.last_attended_date = remaining.service_date;
+                    }
+                });
+                if (toClear.length) await persistMembersBulk(toClear); else saveLocalDataset();
+                renderAll();
+                const msg = `Attendance for ${label} deleted${removeIds.size ? ` (and ${removeIds.size} first timer${removeIds.size === 1 ? '' : 's'} removed)` : ''}. Other dates were not touched. You can upload this one again.`;
+                const st = document.getElementById('attendance-upload-status');
+                if (st) st.innerText = msg;
+                showToast(msg);
+            } catch (err) {
+                showToast((err && err.message) || 'Could not delete attendance.');
+                console.error('Delete attendance failed:', err);
             }
         }
 
@@ -3858,6 +4031,10 @@
         // Church members (not first timers / new converts) whose details are incomplete need a review
         const NAME_TITLES = new Set(['pastor', 'pst', 'ps', 'minister', 'min', 'rev', 'reverend', 'apostle', 'prophet', 'prophetess', 'bishop', 'evangelist', 'deacon', 'deaconess', 'elder', 'brother', 'sister', 'bro', 'sis', 'mr', 'mrs', 'miss', 'ms', 'dr', 'prof', 'mama', 'mzee']);
         function memberReviewReasons(m) {
+            if (m && m.member_category === 'REVIEW') {
+                const why = String(m.previous_history_summary || '').replace(/^\[REVIEW\]\s*/, '');
+                return [why || 'Added from attendance upload, needs checking'];
+            }
             if (!m || (m.member_category || 'MEMBER') !== 'MEMBER') return [];
             const reasons = [];
             const words = String(m.name || '').toLowerCase().replace(/[^a-z\s'-]/g, ' ').split(/\s+/).filter(w => w && !NAME_TITLES.has(w));
@@ -4107,7 +4284,7 @@
             m.follow_up_notes = document.getElementById('black-notes-input').value.trim();
 
             if (status === 'Returned') {
-                const sorted = getSortedSundays();
+                const sorted = getPastSundays();
                 const latest = sorted[sorted.length - 1];
                 if (latest) {
                     m.last_attended_date = latest.service_date;
