@@ -240,14 +240,6 @@
                             </div>
                             <p class="text-xs text-slate-500 mt-0.5">Vertical bar comparison of Sunday services.</p>
                         </div>
-                        <div class="flex items-center gap-1.5 shrink-0">
-                            <button onclick="openAddServiceModal('Sunday')" class="admin-only hidden text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-xl flex items-center gap-1 transition">
-                                <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add Sun
-                            </button>
-                            <button onclick="switchTab('services')" class="admin-only hidden text-xs font-bold text-slate-600 hover:text-indigo-600 px-2.5 py-1.5 rounded-xl border border-slate-200 transition">
-                                Log
-                            </button>
-                        </div>
                     </div>
 
                     <div class="relative w-full h-60 sm:h-64 pt-1">
@@ -264,14 +256,6 @@
                                 <h2 class="text-sm sm:text-base font-extrabold text-slate-900">Wednesday Attendance</h2>
                             </div>
                             <p class="text-xs text-slate-500 mt-0.5">Vertical bar comparison of Wednesday services.</p>
-                        </div>
-                        <div class="flex items-center gap-1.5 shrink-0">
-                            <button onclick="openAddServiceModal('Wednesday')" class="admin-only hidden text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-xl flex items-center gap-1 transition">
-                                <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add Wed
-                            </button>
-                            <button onclick="switchTab('services')" class="admin-only hidden text-xs font-bold text-slate-600 hover:text-emerald-600 px-2.5 py-1.5 rounded-xl border border-slate-200 transition">
-                                Log
-                            </button>
                         </div>
                     </div>
 
@@ -671,10 +655,14 @@
     <!-- ========================================================= -->
     <!-- MOBILE BOTTOM NAVIGATION BAR                              -->
     <!-- ========================================================= -->
-    <nav class="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-1 py-1.5 flex items-center justify-around shadow-[0_-4px_12px_rgba(0,0,0,0.04)]">
+    <nav class="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-1 py-1.5 flex items-center justify-around overflow-x-auto shadow-[0_-4px_12px_rgba(0,0,0,0.04)]">
         <button onclick="switchTab('dashboard')" id="mob-nav-dashboard" class="mob-nav-btn flex flex-col items-center justify-center py-1 px-2 rounded-xl text-indigo-600 font-bold text-[10px] gap-0.5">
             <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
             <span>Overview</span>
+        </button>
+        <button onclick="switchTab('services')" id="mob-nav-services" class="admin-only hidden mob-nav-btn flex flex-col items-center justify-center py-1 px-2 rounded-xl text-slate-500 font-semibold text-[10px] gap-0.5">
+            <i data-lucide="clipboard-check" class="w-4 h-4"></i>
+            <span>Attendance</span>
         </button>
         <button onclick="switchTab('members')" id="mob-nav-members" class="mob-nav-btn flex flex-col items-center justify-center py-1 px-2 rounded-xl text-slate-500 font-semibold text-[10px] gap-0.5">
             <i data-lucide="users" class="w-4 h-4"></i>
@@ -1128,6 +1116,7 @@
 
                 if (srvData && srvData.length > 0) {
                     services = srvData;
+                    ensureNovemberServices();
                 } else {
                     services = getDefaultServices();
                     const { error: seedErr } = await window.supabaseClient.from('church_services').upsert(services);
@@ -1260,6 +1249,7 @@
                 const saved = JSON.parse(localStorage.getItem(LOCAL_DATA_KEY) || 'null');
                 if (saved && Array.isArray(saved.services) && Array.isArray(saved.members)) {
                     services = saved.services;
+                    ensureNovemberServices();
                     members = saved.members;
                     return;
                 }
@@ -1270,15 +1260,27 @@
             members = [];
         }
 
+        const NOVEMBER_SERVICES = [
+            ['srv_1', 'Sunday', '2026-11-01'], ['srv_wed_1', 'Wednesday', '2026-11-04'],
+            ['srv_2', 'Sunday', '2026-11-08'], ['srv_wed_2', 'Wednesday', '2026-11-11'],
+            ['srv_3', 'Sunday', '2026-11-15'], ['srv_wed_3', 'Wednesday', '2026-11-18'],
+            ['srv_4', 'Sunday', '2026-11-22'], ['srv_wed_4', 'Wednesday', '2026-11-25'],
+            ['srv_5', 'Sunday', '2026-11-29']
+        ];
         function getDefaultServices() {
-            // Starting strictly from November 2026 (First Sunday: Nov 01, 2026)
-            return [
-                { id: 'srv_1', label: 'Sun Nov 01 2026', service_date: '2026-11-01', day_of_week: 'Sunday' },
-                { id: 'srv_wed_1', label: 'Wed Nov 04 2026', service_date: '2026-11-04', day_of_week: 'Wednesday' },
-                { id: 'srv_2', label: 'Sun Nov 08 2026', service_date: '2026-11-08', day_of_week: 'Sunday' },
-                { id: 'srv_wed_2', label: 'Wed Nov 11 2026', service_date: '2026-11-11', day_of_week: 'Wednesday' },
-                { id: 'srv_3', label: 'Sun Nov 15 2026', service_date: '2026-11-15', day_of_week: 'Sunday' }
-            ];
+            // Starting strictly from November 2026: every Sunday (1, 8, 15, 22, 29) and Wednesday (4, 11, 18, 25)
+            return NOVEMBER_SERVICES.map(([id, day, date]) => ({
+                id, service_date: date, day_of_week: day,
+                label: `${day === 'Sunday' ? 'Sun' : 'Wed'} ${new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }).replace(',', '')}`
+            }));
+        }
+        // Adds any November date that is missing from services that were saved earlier (nothing existing is changed)
+        function ensureNovemberServices() {
+            getDefaultServices().forEach(d => {
+                if (services.some(x => String(x.service_date) === d.service_date && x.day_of_week === d.day_of_week)) return;
+                services.push(d);
+                if (window.supabaseClient) persistServiceToCloud(d);
+            });
         }
 
         // ---------- Retry queue: saves that fail are kept and re-sent automatically ----------
@@ -1512,7 +1514,17 @@
             id: 'barTopLabels',
             afterDatasetsDraw(chart, args, opts) {
                 const trend = opts && opts.trend;
-                if (!trend || !trend.length) return;
+                if (!trend || !trend.length) {
+                    const a = chart.chartArea;
+                    if (!a) return;
+                    chart.ctx.save();
+                    chart.ctx.font = '600 12px Inter, sans-serif';
+                    chart.ctx.fillStyle = '#94a3b8';
+                    chart.ctx.textAlign = 'center';
+                    chart.ctx.fillText((opts && opts.empty) || '', (a.left + a.right) / 2, (a.top + a.bottom) / 2);
+                    chart.ctx.restore();
+                    return;
+                }
                 const meta = chart.getDatasetMeta(0);
                 const ctx = chart.ctx;
                 const slot = chart.scales.x.width / Math.max(1, trend.length);
@@ -1544,7 +1556,7 @@
         };
 
         function buildVerticalBarConfig(serviceList, barColor, hoverColor, borderColor, emptyLabel) {
-            serviceList = serviceList.filter(s => String(s.service_date) >= CHART_START_DATE);
+            serviceList = serviceList.filter(s => String(s.service_date) >= CHART_START_DATE && getServiceTotal(s) > 0);
             const trend = getServiceTrend(serviceList);
             const labels = serviceList.map(s => {
                 const d = new Date(s.service_date + 'T00:00:00');
@@ -1562,10 +1574,10 @@
             return {
                 type: 'bar',
                 data: {
-                    labels: labels.length ? labels : [emptyLabel],
+                    labels: labels,
                     datasets: [{
                         label: 'Attendance',
-                        data: labels.length ? counts : [0],
+                        data: counts,
                         backgroundColor: barColor,
                         hoverBackgroundColor: hoverColor,
                         borderColor: borderColor,
@@ -1584,7 +1596,7 @@
                     plugins: {
                         legend: { display: false },
                         tooltip: { enabled: false },
-                        barTopLabels: { trend }
+                                barTopLabels: { trend, empty: 'Waiting for attendance upload' }
                     },
                     scales: {
                         x: {
@@ -1988,7 +2000,7 @@
             const summary = document.getElementById('attendance-admin-summary');
             if (!serviceSelect || !listContainer || !summary) return;
 
-            const serviceList = getAllSortedServices().slice().reverse();
+            const serviceList = getAllSortedServices().filter(s => String(s.service_date) >= CHART_START_DATE).reverse();
             const previousServiceId = serviceSelect.value;
             serviceSelect.innerHTML = serviceList.map(s =>
                 `<option value="${escapeHtml(String(s.id))}">${escapeHtml(s.day_of_week || 'Service')} • ${escapeHtml(s.service_date)}</option>`
@@ -1996,7 +2008,7 @@
 
             const selectedServiceId = serviceList.some(s => String(s.id) === String(previousServiceId))
                 ? previousServiceId
-                : (serviceList[0] ? String(serviceList[0].id) : '');
+                : String(((serviceList.find(s => String(s.service_date) <= referenceDateStr) || serviceList[0] || {}).id || ''));
             serviceSelect.value = selectedServiceId;
 
             const selectedService = serviceList.find(s => String(s.id) === String(selectedServiceId));
@@ -2757,6 +2769,62 @@
             closeServiceModal();
             showToast(`Added ${day} service (${dateStr})`);
             renderAll();
+            openAttendanceChoice(newSrv.id);
+        }
+
+        // After a service date is added: choose how to record attendance for it
+        function openAttendanceChoice(serviceId) {
+            const srv = services.find(x => String(x.id) === String(serviceId));
+            const select = document.getElementById('attendance-admin-service');
+            if (!srv || !select || !Array.from(select.options).some(o => o.value === String(srv.id))) return;
+            const esc = (v) => escapeHtml(String(v == null ? '' : v));
+            const wrap = document.createElement('div');
+            wrap.className = 'fixed inset-0 bg-slate-900/60 flex items-end sm:items-center justify-center p-3';
+            wrap.style.zIndex = '99999';
+            wrap.innerHTML = `
+                <div class="bg-white w-full max-w-sm rounded-2xl shadow-xl p-5 space-y-4">
+                    <div>
+                        <h3 class="text-sm font-black text-slate-900">Record attendance</h3>
+                        <p class="text-xs text-slate-500 mt-1">${esc(srv.day_of_week)} • ${esc(srv.service_date)}</p>
+                    </div>
+                    <label class="block space-y-1">
+                        <span class="text-[11px] font-bold text-slate-600">Your name (recorder)</span>
+                        <input data-role="name" type="text" value="${esc(getAttendanceAdminName())}" placeholder="Enter your name" class="w-full px-3 py-2.5 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                    </label>
+                    <p data-role="err" class="hidden text-xs font-semibold text-rose-600">Please enter your name first.</p>
+                    <button type="button" data-act="upload" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-3 rounded-xl">Upload attendance PDF / Excel / CSV</button>
+                    <button type="button" data-act="manual" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-3 rounded-xl">Mark attendance manually</button>
+                    <button type="button" data-act="later" class="w-full text-xs font-bold text-slate-500 py-1.5">Not now</button>
+                    <input data-role="file" type="file" accept=".pdf,.xlsx,.xls,.csv,.txt" class="hidden" />
+                </div>`;
+            document.body.appendChild(wrap);
+            const q = (sel) => wrap.querySelector(sel);
+            const prepare = () => {
+                const name = q('[data-role="name"]').value.trim();
+                if (!name) { q('[data-role="err"]').classList.remove('hidden'); return false; }
+                const nameInput = document.getElementById('attendance-admin-name');
+                if (nameInput) { nameInput.value = name; saveAttendanceAdminName(); }
+                select.value = String(srv.id);
+                renderAttendanceAdminPanel();
+                switchTab('services');
+                return true;
+            };
+            q('[data-act="upload"]').onclick = () => {
+                if (!q('[data-role="name"]').value.trim()) { q('[data-role="err"]').classList.remove('hidden'); return; }
+                q('[data-role="file"]').click();
+            };
+            q('[data-role="file"]').onchange = (ev) => {
+                if (!prepare()) return;
+                handleAttendanceUpload(ev);
+                wrap.remove();
+            };
+            q('[data-act="manual"]').onclick = () => {
+                if (!prepare()) return;
+                wrap.remove();
+                const list = document.getElementById('attendance-admin-list');
+                if (list) setTimeout(() => list.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
+            };
+            q('[data-act="later"]').onclick = () => wrap.remove();
         }
 
         function toggleCategoryFields() {
