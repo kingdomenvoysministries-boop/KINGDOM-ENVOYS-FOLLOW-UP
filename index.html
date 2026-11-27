@@ -1286,6 +1286,10 @@
                     <label class="block font-bold text-slate-700 mb-1">Location / Residence</label>
                     <input type="text" id="member-location" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-800" placeholder="e.g. Kasarani, Nairobi" />
                 </div>
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">Date of Birth</label>
+                    <input type="date" id="member-dob" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-800" />
+                </div>
 
                 <div id="fields-first-timer" class="hidden space-y-3 bg-sky-50/70 p-3 rounded-xl border border-sky-100">
                     <div>
@@ -1684,8 +1688,11 @@
                     const meta = localMeta[m.id] || {};
                     // Cloud columns are the source of truth; local meta / notes tags are only fallbacks for old rows
                     const detectedCategory = m.member_category || meta.member_category || detectCategoryFromNotes(m.previous_history_summary);
+                    const dobMatch = String(m.previous_history_summary || '').match(/\[DOB:(\d{4}-\d{2}-\d{2})\]/);
                     return {
                         ...m,
+                        previous_history_summary: String(m.previous_history_summary || '').replace(/\s*\[DOB:[^\]]*\]/g, ''),
+                        dob: dobMatch ? dobMatch[1] : (m.dob || ''),
                         member_category: detectedCategory,
                         invited_by: m.invited_by || meta.invited_by || '',
                         ft_status: m.ft_status || meta.ft_status || 'Pending Welcome',
@@ -1880,6 +1887,9 @@
         }
 
         function buildMemberPayload(m, summary) {
+            // Date of birth travels inside the existing notes column as a small tag, so no new database column is needed
+            const dobTag = m.dob ? ` [DOB:${m.dob}]` : '';
+            summary = ((summary || '') + dobTag).trim();
             return {
                 id: m.id,
                 name: m.name,
@@ -2489,6 +2499,7 @@
             return `
                 <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     ${row('Residence', escapeHtml(m.location || 'Not set'))}
+                    ${row('Date of birth', escapeHtml(formatDob(m.dob) || 'Not set'))}
                     ${row('Last attended', escapeHtml(m.last_attended_date || 'N/A'))}
                     ${row('Absence', escapeHtml(absence))}
                     ${row('Attendance', escapeHtml(serviceAttendanceText(m)))}
@@ -6022,6 +6033,7 @@
             document.getElementById('member-name').value = m.name;
             document.getElementById('member-phone').value = m.phone;
             document.getElementById('member-location').value = m.location || '';
+            document.getElementById('member-dob').value = m.dob || '';
             document.getElementById('member-last-date').value = m.last_attended_date || referenceDateStr;
             document.getElementById('member-assignee').value = m.assigned_follow_up_person || '';
 
@@ -6048,6 +6060,7 @@
             const name = document.getElementById('member-name').value.trim();
             const phone = document.getElementById('member-phone').value.trim();
             const location = document.getElementById('member-location').value.trim();
+            const dobValue = document.getElementById('member-dob').value;
             const lastDate = document.getElementById('member-last-date').value;
             const assignee = document.getElementById('member-assignee').value.trim();
             const historyNote = document.getElementById('member-history-note').value.trim();
@@ -6064,6 +6077,7 @@
                     m.name = name;
                     m.phone = phone;
                     m.location = location;
+                    m.dob = dobValue;
                     m.last_attended_date = lastDate || m.last_attended_date;
                     m.assigned_follow_up_person = assignee;
                     m.previous_history_summary = historyNote;
@@ -6083,6 +6097,7 @@
                     name,
                     phone,
                     location,
+                    dob: dobValue,
                     last_attended_date: lastDate || referenceDateStr,
                     previous_history_summary: historyNote || (category === 'FIRST_TIMER' ? 'First-time visitor' : category === 'NEW_CONVERT' ? 'New convert' : 'Newly registered member'),
                     follow_up_status: 'Active',
@@ -6440,6 +6455,59 @@
             return '';
         }
 
+        // ---------- Date of birth: reads many formats (12/05/1990, 1990-05-12, 12 May 1990, May 12, 1990, Excel dates) ----------
+        function normalizeDob(v) {
+            if (v === null || v === undefined || v === '') return '';
+            const pad = n => String(n).padStart(2, '0');
+            const thisYear = new Date().getFullYear();
+            let y, mo, d;
+            if (v instanceof Date || typeof v === 'number') {
+                const t = normalizeDate(v).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                if (!t) return '';
+                y = +t[1]; mo = +t[2]; d = +t[3];
+            } else {
+                const str = String(v).trim().replace(/(\d)(st|nd|rd|th)\b/gi, '$1').replace(/\bof\b/gi, ' ').replace(/\s+/g, ' ');
+                let m = str.match(/^(\d{4})[\/.\-](\d{1,2})[\/.\-](\d{1,2})$/);
+                if (m) { y = +m[1]; mo = +m[2]; d = +m[3]; }
+                else if ((m = str.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})$/))) {
+                    d = +m[1]; mo = +m[2]; y = +m[3];
+                    if (mo > 12 && d <= 12) { const t = d; d = mo; mo = t; }   // 05/13/1990 written month-first
+                    if (y < 100) y += (y > thisYear % 100) ? 1900 : 2000;
+                } else {
+                    const t = normalizeDate(str).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                    if (!t) return '';
+                    y = +t[1]; mo = +t[2]; d = +t[3];
+                    if (y > thisYear) y -= 100;
+                }
+            }
+            if (!(y >= 1900 && y <= thisYear) || mo < 1 || mo > 12 || d < 1 || d > 31) return '';
+            return `${y}-${pad(mo)}-${pad(d)}`;
+        }
+
+        const DOB_MONTHS = '(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)';
+        const DOB_PATTERNS = [
+            /\b(?:19|20)\d{2}[\/.\-]\d{1,2}[\/.\-]\d{1,2}\b/,
+            /\b\d{1,2}[\/.\-]\d{1,2}[\/.\-](?:19|20)?\d{2}\b/,
+            new RegExp('\\b\\d{1,2}(?:st|nd|rd|th)?[\\s\\-]+(?:of\\s+)?' + DOB_MONTHS + '[a-z]*\\.?,?[\\s\\-]+(?:19|20)?\\d{2}\\b', 'i'),
+            new RegExp('\\b' + DOB_MONTHS + '[a-z]*\\.?\\s+\\d{1,2}(?:st|nd|rd|th)?,?\\s+(?:19|20)\\d{2}\\b', 'i')
+        ];
+        // Finds a date of birth inside a line of text and returns it together with the text that is left over
+        function extractDob(text) {
+            const t = String(text || '');
+            for (const re of DOB_PATTERNS) {
+                const m = t.match(re);
+                if (!m) continue;
+                const dob = normalizeDob(m[0]);
+                if (dob) return { dob, rest: (t.slice(0, m.index) + ' ' + t.slice(m.index + m[0].length)).replace(/\s+/g, ' ').trim() };
+            }
+            return { dob: '', rest: t };
+        }
+        function formatDob(dob) {
+            if (!dob) return '';
+            const d = new Date(dob + 'T12:00:00');
+            return isNaN(d) ? dob : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+
         // ---------- N / R column: N = first timer, R = regular member ----------
         // Used only to set the category while importing. It is never stored or shown as text.
         const MARKER_CELL_RE = /^[NRnr]$/;
@@ -6496,6 +6564,7 @@
                 clean[headerIdx].forEach((h, ci) => {
                     const l = String(h).toLowerCase();
                     if (map.name === undefined && /name/.test(l)) map.name = ci;
+                    else if (map.dob === undefined && /dob|d\.o\.b|birth|b['\u2019]?day/.test(l)) map.dob = ci;
                     else if (map.phone === undefined && /phone|tel|mobile|contact|number|cell/.test(l)) map.phone = ci;
                     else if (map.location === undefined && /location|residence|area|address|estate|town/.test(l)) map.location = ci;
                     else if (map.date === undefined && /date|last|attend|visit/.test(l)) map.date = ci;
@@ -6528,7 +6597,7 @@
 
             for (let i = start; i < clean.length; i++) {
                 const row = clean[i];
-                let name = '', phone = '', location = '', date = '', cat = '', assigned = '', marker = '';
+                let name = '', phone = '', location = '', date = '', cat = '', assigned = '', marker = '', dob = '';
 
                 if (map && map.name !== undefined) {
                     name = row[map.name] || '';
@@ -6537,6 +6606,16 @@
                     date = map.date !== undefined ? row[map.date] : '';
                     cat = map.category !== undefined ? String(row[map.category] || '') : '';
                     assigned = map.assigned !== undefined ? String(row[map.assigned] || '') : '';
+                    if (map.dob !== undefined) dob = row[map.dob];
+                    // PDF tables can shift columns: if the DOB or phone is not where the heading says, look through the whole row
+                    const usedCols = new Set(Object.values(map));
+                    if (!normalizeDob(dob)) {
+                        dob = '';
+                        row.forEach((c, ci) => { if (!dob && !usedCols.has(ci) && typeof c === 'string') { const f = extractDob(c); if (f.dob) dob = f.dob; } });
+                    }
+                    if (isPdf && String(phone).replace(/\D/g, '').length < 7) {
+                        row.forEach((c, ci) => { const cs = String(c); if (String(phone).replace(/\D/g, '').length < 7 && ci !== map.name && !normalizeDob(cs) && phoneRe.test(cs)) phone = cs.match(phoneRe)[1]; });
+                    }
                     if (!statusFromLetter(cat)) {
                         const used = new Set(Object.values(map));
                         row.forEach((c, ci) => {
@@ -6549,7 +6628,9 @@
                         return true;
                     });
                     if (cellsNoMark.length > 1 && /^\d{1,4}[.)]?$/.test(String(cellsNoMark[0]).trim())) cellsNoMark.shift();
-                    const text = cellsNoMark.map(String).join(' ').replace(/\s+/g, ' ').trim();
+                    let text = cellsNoMark.map(String).join(' ').replace(/\s+/g, ' ').trim();
+                    const dobFound = extractDob(text);
+                    if (dobFound.dob) { dob = dobFound.dob; text = dobFound.rest; }
                     if (!text || /^page\s*\d+/i.test(text)) continue;
                     const pm = text.match(phoneRe);
                     if (pm) {
@@ -6595,6 +6676,7 @@
                     phone: digits.length >= 7 ? phone.trim() : 'No Phone',
                     location: location.trim(),
                     date: normalizeDate(date),
+                    dob: normalizeDob(dob),
                     category: marker || detectCategory(cat, defaultCategory),
                     marked: !!marker || !!statusFromLetter(cat),
                     assigned: /^unassigned$/i.test(assigned.trim()) ? '' : assigned.trim()
@@ -6727,9 +6809,11 @@
                     `\nRegular members: ${fresh.filter(pp => pp.marked && pp.category === 'MEMBER').length}` +
                     (unmarked.length ? `\nNot marked in the file: ${unmarked.length} (added as ${CATEGORY_LABELS[defaultCategory] || 'Member'}): ${unmarked.slice(0, 4).map(pp => pp.name).join(', ')}${unmarked.length > 4 ? ', ...' : ''}` : '') + '\n';
             }
+            const hasPhone = fresh.filter(pp => pp.phone && pp.phone !== 'No Phone').length;
+            markNote += `\nRead from the file: ${hasPhone} mobile numbers, ${fresh.filter(pp => pp.location).length} residences, ${fresh.filter(pp => pp.dob).length} dates of birth\n`;
             const needReview = fresh.filter(pp => memberReviewReasons({ name: pp.name, phone: pp.phone, member_category: pp.category }).length).length;
             if (needReview) markNote += `\nNeeds review (one name or no phone): ${needReview}\n`;
-            const preview = fresh.slice(0, 5).map(pp => '• ' + pp.name).join('\n');
+            const preview = fresh.slice(0, 5).map(pp => '• ' + [pp.name, pp.phone, pp.location, pp.dob ? 'DOB ' + formatDob(pp.dob) : ''].filter(Boolean).join(' | ')).join('\n');
             const okToGo = confirm(`Found ${fresh.length} new ${fresh.length === 1 ? 'person' : 'people'}${skipped ? ` (${skipped} already recorded, skipped)` : ''}.\n\n${preview}${fresh.length > 5 ? '\n• ...' : ''}\n${markNote}\nAdd them now?`);
             if (!okToGo) { say('Import cancelled.'); return; }
 
@@ -6742,6 +6826,7 @@
                     name: pp.name,
                     phone: pp.phone,
                     location: pp.location,
+                    dob: pp.dob || '',
                     last_attended_date: date,
                     previous_history_summary: `Imported from ${file.name}`,
                     follow_up_status: 'Active',
