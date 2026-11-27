@@ -1,7 +1,7 @@
 {
-  "name": "Kingdom Envoys Ministries Follow-up",
-  "short_name": "KEM Follow-up",
-  "description": "Pastoral care, first timers, new converts, zone tracker and soul winning for Kingdom Envoys Ministries.",
+  "name": "Kingdom Envoys Ministries",
+  "short_name": "KEM Church",
+  "description": "Church management app: people, follow-up, departments, finance and reports.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
@@ -9,8 +9,8 @@
   "background_color": "#ffffff",
   "theme_color": "#4f46e5",
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "logo.png", "sizes": "any", "type": "image/png", "purpose": "any" },
+    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "favicon.png", "sizes": "any", "type": "image/png" }
   ]
 }
