@@ -1468,7 +1468,7 @@
                 const { createClient } = await loadSupabaseLib();
                 const cleanUrl = SUPABASE_URL.replace(/\/rest\/v1\/?$/, '');
                 window.supabaseClient = createClient(cleanUrl, SUPABASE_KEY.trim(), {
-                    auth: { persistSession: false, autoRefreshToken: false },
+                    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
                     realtime: { params: { eventsPerSecond: 5 } }
                 });
                 window.supabaseInitError = null;
@@ -4743,7 +4743,7 @@
                 try {
                     const lib = await import(src);
                     adminAuthClient = lib.createClient(main.supabaseUrl, main.supabaseKey, {
-                        auth: { persistSession: false, autoRefreshToken: true, storageKey: 'kem_admin_auth_v1' }
+                        auth: { persistSession: false, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'kem_admin_auth_v1' }
                     });
                     return adminAuthClient;
                 } catch (e) { console.warn('Admin login library failed to load from', src, e); }
@@ -5664,7 +5664,7 @@ function renderAccessPage() {
             // The admin account and password-reset links still ask for a password.
             const linkEmail = String(data.session.user.email || '').toLowerCase();
             if (!isReset && linkEmail && linkEmail !== ADMIN_EMAIL) {
-                if (await finishAccessLogin(c, linkEmail, true, data.session)) { showToast('Welcome! You are signed in.'); switchPrimaryView('people-follow-up'); return; }
+                if (await finishAccessLogin(c, linkEmail, true, data.session)) { showToast('Welcome! You are signed in.'); switchPrimaryView(isRegistrationUser() ? 'registration' : 'people-follow-up'); return; }
                 showToast('This email has no access yet. Ask the admin.');
                 return;
             }
@@ -6325,6 +6325,7 @@ function renderAccessPage() {
             showToast(failed.length ? `Backup saved, but could not read: ${failed.join(', ')}` : 'Backup downloaded');
         }
 
+        const KEM_INITIAL_HASH = location.hash || '';
         // The app always opens in the read-only view. Admin only after typing the password; any old saved admin login is wiped.
         try { localStorage.removeItem('kem_admin_auth_v1'); } catch (e) {}
         applyAdminUI();
