@@ -195,6 +195,7 @@
 </head>
 <body class="bg-slate-50 text-slate-800 h-full flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
 
+    <div id="signin-gate" class="hidden fixed inset-0 z-[45] bg-slate-50 flex flex-col items-center justify-center gap-3 p-6 text-center"><img src="logo.png" alt="" class="w-16 h-16 object-contain"><h2 class="text-lg font-black text-slate-900">Not signed in</h2><p class="text-xs font-semibold text-slate-500 max-w-xs">Sign in with the email and password you were given, or open the link you were sent.</p><button type="button" onclick="openAdminLogin()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl">Sign in</button></div>
     <!-- TOP HEADER -->
     <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shrink-0">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2">
@@ -3907,6 +3908,7 @@
             }
             const previousView = activePrimaryView;
             activePrimaryView = viewId;
+            try { if (accessUser && !isAdmin) localStorage.setItem('kem_last_view_' + String(accessUser.email || '').toLowerCase(), viewId); } catch (e) {}
 
             document.querySelectorAll('.primary-view').forEach(el => el.classList.add('hidden'));
             const activeView = document.getElementById(`primary-view-${viewId}`);
@@ -4758,7 +4760,12 @@
             return null;
         }
 
+        function updateGate() {
+            const g = document.getElementById('signin-gate'); if (!g) return;
+            g.classList.toggle('hidden', !!(isAdmin || accessUser) || !!document.documentElement.dataset.pending);
+        }
         function applyAdminUI() {
+            try { updateGate(); } catch (e) {}
             document.querySelectorAll('.admin-only').forEach(el => el.classList.toggle('hidden', !(isAdmin || (el.classList.contains('pastor-ok') && accessUser && accessUser.role === 'pastor') || (el.classList.contains('leader-ok') && accessUser && accessUser.role === 'department_leader'))));
             document.documentElement.dataset.admin = isAdmin ? '1' : '';
             document.documentElement.dataset.leader = (!isAdmin && accessUser && accessUser.role === 'department_leader') ? '1' : '';
@@ -4784,8 +4791,9 @@
             });
             const saArrowSVG = '<svg viewBox="0 0 32 16" class="inline-block align-middle" style="width:2.4rem;height:1rem" fill="none" stroke="#c9a227" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 8h27"/><path d="m21 1.5 7.5 6.5-7.5 6.5"/></svg>';
             const saBtn = document.querySelector('.primary-nav-tab[data-primary-tab="special-access"]');
-            const fab = document.getElementById('chat-fab'); if (fab) fab.classList.toggle('hidden', !signedIn || regOnly);
-            if (signedIn && !regOnly) startChatAlerts(); else stopChatAlerts();
+            const fab = document.getElementById('chat-fab'); const fuOnly = !!(accessUser && !isAdmin && accessUser.role === 'follow_up');
+            if (fab) fab.classList.toggle('hidden', !signedIn || regOnly || fuOnly);
+            if (signedIn && !regOnly && !fuOnly) startChatAlerts(); else stopChatAlerts();
             if (saBtn && signedIn) saBtn.style.display = 'none';
             if (saBtn) { if (signedIn) saBtn.textContent = 'Chat'; else saBtn.textContent = 'Pastoral'; saBtn.setAttribute('aria-label', signedIn ? 'Chat' : 'Sign in'); }
             ['special-access-badge', 'special-access-heading'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = 'Chat'; });
@@ -5164,14 +5172,20 @@
             if (keep.a && document.getElementById('ldg-amount')) document.getElementById('ldg-amount').value = keep.a;
         }
         // ---------- Special Access (senior pastor / department leaders) and the records chat ----------
-        function canViewAll() { return isAdmin || !!(accessUser && accessUser.role === 'pastor'); }
+        function canViewAll() { return isAdmin || !!(accessUser && (accessUser.role === 'pastor' || accessUser.role === 'follow_up')); }
         // ---------- Per-person section access (set by the admin when adding someone) ----------
         function accessSections() { return [['departments', 'Departments'], ['staff', 'Staff'], ['finance', 'Finance: income, bills, projects'], ['finance_edit', 'Finance editor: can record and change money'], ['reports', 'Reports']]; }
         function accessPermList(u) {
+            const l = accessPermListBase(u);
+            return (u && u.role === 'registration' && !l.includes('reg_v2') && !l.includes('reg_attendance')) ? l.concat(['reg_attendance']) : l;   // older registration people keep attendance
+        }
+        function regAttOn() { return !!accessUser && accessPermList(accessUser).includes('reg_attendance'); }
+        function accessPermListBase(u) {
             if (!u) return [];
             const raw = u.permissions;
             if (Array.isArray(raw)) return raw;
             if (typeof raw === 'string' && raw.trim()) return raw.split(',').map(x => x.trim()).filter(Boolean);
+            if (u.role === 'follow_up') return [];
             if (u.role === 'registration') return ['reg_member', 'reg_first_timer', 'reg_new_convert'];
             return u.role === 'pastor' ? ['departments', 'staff', 'finance', 'reports'] : ['departments'];   // people added before this feature keep their old access
         }
@@ -5239,6 +5253,10 @@
                     <div id="reg-done-list" class="space-y-2"></div>
                 </div>`;
             }
+            { const q = document.getElementById('reg-att-q'), ac = q && q.closest('.bg-white'), on = regAttOn();
+              if (ac) ac.style.display = on ? '' : 'none';
+              const h = Array.from(box.querySelectorAll('h2')).find(x => x.textContent === 'Registration'), rc = h && h.closest('.bg-white');
+              if (rc) rc.style.display = (regAllowedCats().length || !on) ? '' : 'none'; }
             const sel = document.getElementById('reg-att-service');
             const svc = regCurrentService();
             if (sel) {
@@ -5390,13 +5408,14 @@ function renderAccessPage() {
                     <input id="acc-name" type="text" placeholder="Name" class="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl">
                     <input id="acc-title" type="text" placeholder="Title, e.g. Pastor, Deaconess" class="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl">
                     <input id="acc-duties" type="text" placeholder="Role, e.g. Finance, Choir" class="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl">
-                    <select id="acc-role" onchange="document.getElementById('acc-dept').classList.toggle('hidden', this.value!=='department_leader'); presetAccessPerms(this.value)" class="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl"><option value="pastor">Pastor (sees everything, read-only)</option><option value="department_leader">Department leader</option><option value="registration">Registration (can only register people)</option></select>
+                    <select id="acc-role" onchange="document.getElementById('acc-dept').classList.toggle('hidden', this.value!=='department_leader'); presetAccessPerms(this.value)" class="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl"><option value="pastor">Pastor (sees everything, read-only)</option><option value="department_leader">Department leader</option><option value="follow_up">Follow Up (can only view Follow Up)</option><option value="registration">Registration (can only register people)</option></select>
                     <select id="acc-dept" multiple title="Hold Ctrl or Cmd to pick more than one" class="hidden px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl">${depts}</select>
                     <div id="acc-reg-box" class="hidden sm:col-span-4 flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2.5 bg-sky-50 border border-sky-200 rounded-xl">
-                        <span class="font-black text-sky-900">This person can ONLY register:</span>
+                        <span class="font-black text-sky-900">This person can ONLY do:</span>
                         <label class="inline-flex items-center gap-1.5 font-semibold text-slate-800"><input type="checkbox" class="acc-reg-perm" value="reg_member"> New members</label>
                         <label class="inline-flex items-center gap-1.5 font-semibold text-slate-800"><input type="checkbox" class="acc-reg-perm" value="reg_first_timer"> First timers</label>
                         <label class="inline-flex items-center gap-1.5 font-semibold text-slate-800"><input type="checkbox" class="acc-reg-perm" value="reg_new_convert"> New converts</label>
+                        <label class="inline-flex items-center gap-1.5 font-semibold text-slate-800"><input type="checkbox" class="acc-reg-perm" value="reg_attendance"> Mark attendance</label>
                         <span class="text-slate-500 w-full">They cannot see anything else in the app.</span>
                     </div>
                     <div id="acc-sections-box" class="sm:col-span-4 flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-xl">
@@ -5410,7 +5429,7 @@ function renderAccessPage() {
                 <input id="assign-search" type="text" oninput="renderAssignList()" placeholder="Search a member" class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl"><div id="assign-list" class="space-y-1 max-h-72 overflow-y-auto"></div></div>`;
         }
         let accessOpenEmail = '';
-        const REG_PERM_LIST = [['reg_member', 'Register new members'], ['reg_first_timer', 'Register first timers'], ['reg_new_convert', 'Register new converts']];
+        const REG_PERM_LIST = [['reg_member', 'Register new members'], ['reg_first_timer', 'Register first timers'], ['reg_new_convert', 'Register new converts'], ['reg_attendance', 'Mark attendance']];
         async function loadAccessList() {
             if (!isAdmin) return;
             const el = document.getElementById('access-list'); if (!el) return;
@@ -5453,6 +5472,7 @@ function renderAccessPage() {
             const r = (window.__accessRows || []).find(x => String(x.email).toLowerCase() === String(email).toLowerCase());
             if (!r) return;
             const cur = accessPermList(r).filter(k => k !== 'none');
+            if (r.role === 'registration' && !cur.includes('reg_v2')) cur.push('reg_v2');
             const next = on ? Array.from(new Set(cur.concat([key]))) : cur.filter(k => k !== key);
             const value = next.length ? next.join(',') : 'none';
             try {
@@ -5486,12 +5506,12 @@ function renderAccessPage() {
         }
         let editingAccessEmail = null;
         function presetAccessPerms(role) {
-            const want = role === 'pastor' ? ['departments', 'staff', 'finance', 'reports'] : ['departments'];
+            const want = role === 'pastor' ? ['departments', 'staff', 'finance', 'reports'] : role === 'follow_up' ? [] : ['departments'];
             document.querySelectorAll('.acc-perm').forEach(x => { x.checked = want.includes(x.value); });
             document.querySelectorAll('.acc-reg-perm').forEach(x => { x.checked = true; });
             const isReg = role === 'registration';
             const rb = document.getElementById('acc-reg-box'); if (rb) rb.classList.toggle('hidden', !isReg);
-            const sb = document.getElementById('acc-sections-box'); if (sb) sb.classList.toggle('hidden', isReg);
+            const sb = document.getElementById('acc-sections-box'); if (sb) sb.classList.toggle('hidden', isReg || role === 'follow_up');
         }
         function editAccess(email) {
             const r = (window.__accessRows || []).find(x => String(x.email).toLowerCase() === String(email).toLowerCase());
@@ -5501,7 +5521,7 @@ function renderAccessPage() {
             const roleEl = document.getElementById('acc-role'); if (roleEl) roleEl.value = r.role;
             const sel = document.getElementById('acc-dept');
             if (sel) {
-                sel.classList.toggle('hidden', r.role === 'pastor');
+                sel.classList.toggle('hidden', r.role === 'pastor' || r.role === 'follow_up');
                 const mine = String(r.department || '').split(';').map(x => x.trim());
                 Array.from(sel.options).forEach(o => { o.selected = mine.includes(o.value); });
             }
@@ -5518,6 +5538,7 @@ function renderAccessPage() {
             if (!isAdmin) return;
             const role = document.getElementById('acc-role').value;
             const picked = Array.from(document.querySelectorAll(role === 'registration' ? '.acc-reg-perm:checked' : '.acc-perm:checked')).map(x => x.value);
+            if (role === 'registration') picked.push('reg_v2');
             const row = { permissions: picked.length ? picked.join(',') : 'none', email: document.getElementById('acc-email').value.trim().toLowerCase(), name: document.getElementById('acc-name').value.trim(), title: document.getElementById('acc-title').value.trim(), duties: document.getElementById('acc-duties').value.trim(), role, department: role !== 'department_leader' ? null : Array.from(document.getElementById('acc-dept').selectedOptions).map(o => o.value).join('; ') };
             try {
                 const c = await ledgerClient();
@@ -5717,6 +5738,7 @@ function renderAccessPage() {
             renderAll();
             if (activePrimaryView === 'special-access') renderSpecialAccess();
             if (row.role === 'registration') switchPrimaryView('registration');
+            else { let v = ''; try { v = localStorage.getItem('kem_last_view_' + String(row.email || '').toLowerCase()) || ''; } catch (e) {} if (v && v !== 'people-follow-up' && v !== 'special-access') switchPrimaryView(v); }
             return true;
         }
         async function restoreAccessSession() {
@@ -6448,7 +6470,7 @@ function renderAccessPage() {
         // The app always opens in the read-only view. Admin only after typing the password; any old saved admin login is wiped.
         try { localStorage.removeItem('kem_admin_auth_v1'); } catch (e) {}
         applyAdminUI();
-        handleAuthLink().then(() => { if (!accessUser) return restoreAccessSession(); }).catch(() => {}).then(() => { delete document.documentElement.dataset.pending; });
+        handleAuthLink().then(() => { if (!accessUser) return restoreAccessSession(); }).catch(() => {}).then(() => { delete document.documentElement.dataset.pending; updateGate(); });
         setTimeout(() => { try { getAdminAuthClient().catch(() => {}); } catch (e) {} }, 1500);   // get the sign-in ready before anyone taps it
 
         function openAddServiceModal(defaultDay = 'Sunday') {
