@@ -1232,14 +1232,14 @@
                     <i data-lucide="x" class="w-4 h-4"></i>
                 </button>
             </div>
-            <div class="space-y-3">
-                <input type="email" id="admin-login-email" autocomplete="username" placeholder="Email" class="w-full px-3.5 py-2.5 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                <input type="password" id="admin-login-password" autocomplete="current-password" placeholder="Password" onkeydown="if(event.key==='Enter') submitAdminLogin()" class="w-full px-3.5 py-2.5 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <form class="space-y-3" onsubmit="event.preventDefault(); submitAdminLogin(); return false;">
+                <input type="email" id="admin-login-email" name="username" autocomplete="username" placeholder="Email" class="w-full px-3.5 py-2.5 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <input type="password" id="admin-login-password" name="password" autocomplete="current-password" placeholder="Password" onkeydown="if(event.key==='Enter') submitAdminLogin()" class="w-full px-3.5 py-2.5 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 <label class="flex items-center gap-2 text-xs font-semibold text-slate-600"><input type="checkbox" id="login-remember" checked class="rounded"> Keep me signed in on this device</label>
                 <p id="admin-login-error" class="text-xs font-semibold text-rose-600 hidden"></p>
-                <button onclick="submitAdminLogin()" id="admin-login-submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition">Sign in</button>
-                <button type="button" onclick="sendPasswordReset()" class="w-full text-xs font-bold text-indigo-600 py-1">First time or forgot password? Email me a link</button>
-            </div>
+                <button type="submit" id="admin-login-submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition">Sign in</button>
+                <button type="button" onclick="sendPasswordReset()" class="w-full text-xs font-bold text-indigo-600 py-1">New device? Email me a sign-in link</button>
+            </form>
         </div>
     </div>
 
@@ -4855,6 +4855,8 @@
                 const got = data && data.user && data.user.email;
                 if (got && got.toLowerCase() === ADMIN_EMAIL) {
                     isAdmin = true;
+                    try { localStorage.setItem('kem_last_email', got.toLowerCase()); } catch (e) {}
+                    if (document.getElementById('login-remember').checked && data.session) { saveAccessSession(data.session); watchAccessTokens(c); }
                 } else {
                     const ok = await finishAccessLogin(c, got, document.getElementById('login-remember').checked, data.session);
                     if (!ok) throw new Error('This email has no access. Ask the admin to add you.');
@@ -5727,7 +5729,7 @@ function renderAccessPage() {
             if (c.__kemWatch) return;
             c.__kemWatch = true;
             c.auth.onAuthStateChange((ev, sess) => {
-                try { if (sess && accessUser && localStorage.getItem(ACCESS_SESSION_KEY)) saveAccessSession(sess); } catch (e) {}
+                try { if (sess && (accessUser || isAdmin) && localStorage.getItem(ACCESS_SESSION_KEY)) saveAccessSession(sess); } catch (e) {}
             });
         }
         async function finishAccessLogin(c, email, remember, sess) {
@@ -5758,7 +5760,12 @@ function renderAccessPage() {
                 const { data, error } = await c.auth.setSession(JSON.parse(raw));
                 if (error || !data.session) throw (error || new Error('expired'));
                 const email = (data.session.user.email || '').toLowerCase();
-                if (email === ADMIN_EMAIL) { await c.auth.signOut(); localStorage.removeItem(ACCESS_SESSION_KEY); return; }
+                if (email === ADMIN_EMAIL) {
+                    isAdmin = true; watchAccessTokens(c); applyAdminUI();
+                    const bg = f => { try { return Promise.resolve(f()).catch(() => {}); } catch (e) { return Promise.resolve(); } };
+                    Promise.all([bg(loadPartnerRecords), bg(loadProjectRecords), bg(loadDeptAssignments), bg(loadLedgerFromDb)]).then(() => { try { renderAll(); } catch (e) {} bg(syncDeptData); });
+                    return;
+                }
                 if (!(await finishAccessLogin(c, email, true, data.session))) { if (/^No access/.test(kemAccessErr)) localStorage.removeItem(ACCESS_SESSION_KEY); else if (kemAccessErr) showToast(kemAccessErr); }
             } catch (e) {
                 console.warn('Saved sign-in could not be restored:', e);
@@ -5772,9 +5779,21 @@ function renderAccessPage() {
             try {
                 const c = await getAdminAuthClient();
                 if (!c) throw new Error('offline');
-                const { error } = await c.auth.resetPasswordForEmail(email, { redirectTo: appLinkBase() });
-                if (error) throw error;
-                showToast('Check your email for the link to set your password.');
+                if (email.toLowerCase() === ADMIN_EMAIL) {
+                    const { error } = await c.auth.resetPasswordForEmail(email, { redirectTo: appLinkBase() });
+                    if (error) throw error;
+                    showToast('Check your email for the link to set your password.');
+                } else {
+                    // Staff: a sign-in link only, no password involved
+                    const { error } = await c.auth.signInWithOtp({ email: email.toLowerCase(), options: { shouldCreateUser: false, emailRedirectTo: appLinkBase() } });
+                    if (error) {
+                        const m = String(error.message || '');
+                        if (/rate limit|too many|seconds/i.test(m)) { showToast('Too many emails sent. Wait a few minutes and try again.'); return; }
+                        if (/not allowed|not found|signups?/i.test(m)) { showToast('This email has no access yet. Ask the admin.'); return; }
+                        throw error;
+                    }
+                    showToast('Check your email and tap the link to sign in on this device.');
+                }
             } catch (e) { showToast('Could not send the email. Check your connection.'); }
         }
         async function handleAuthLink() {
@@ -5808,7 +5827,6 @@ function renderAccessPage() {
                     const secs = accessPermList(accessUser).filter(x => x !== 'none').join(', ') || 'none';
                     showToast('Welcome! Signed in as ' + (accessUser.role || 'staff') + '. Sections: ' + secs);
                     switchPrimaryView(isRegistrationUser() ? 'registration' : 'people-follow-up');
-                    try { if (!localStorage.getItem('kem_pw_set_' + linkEmail)) { localStorage.setItem('kem_pw_set_' + linkEmail, '1'); document.getElementById('set-password-modal').classList.remove('hidden'); } } catch (e) {}
                     return;
                 }
                 showToast(kemAccessErr || 'This email has no access yet. Ask the admin.');
