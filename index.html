@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" class="h-full">
 <head>
-<script>window.KEM_HASH0 = location.hash || '';try{if(localStorage.getItem('kem_access_session_v1')||/access_token=|type=(invite|signup|magiclink)/.test(location.hash))document.documentElement.dataset.pending='1';}catch(e){}</script>
+<script>window.KEM_HASH0 = location.hash || '';try{if(localStorage.getItem('kem_access_session_v1')||/(^|; )kem_rt=/.test(document.cookie)||/access_token=|type=(invite|signup|magiclink)/.test(location.hash))document.documentElement.dataset.pending='1';}catch(e){}</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Church Management App</title>
@@ -128,7 +128,7 @@
         .gold-tile { background:#fbf5dc; border-color:#ecd98a; color:#7a5c0b; }
         .gold-badge { background:#f6e9b4; color:#7a5c0b; }
         .ledger-btn { background-color: #c9a227; } .ledger-btn:hover { background-color: #b8891f; }
-        .dashboard-order-attendance { order: 6; }
+        .dashboard-order-attendance { order: 1; }
         .dashboard-order-follow-up { order: 2; }
         .dashboard-order-zones { order: 5; }
         .dashboard-order-admin { order: 7; }
@@ -1214,6 +1214,7 @@
                     <select id="report-week-select" onchange="setReportWeek(this.value)" class="flex-1 min-w-0 sm:flex-none sm:w-72 px-3 py-2 text-xs font-semibold bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
                     <button type="button" onclick="discussReport()" class="shrink-0 whitespace-nowrap text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-xl px-3 py-2">Discuss in chat</button>
                 </div>
+                <div class="admin-only hidden mt-2"><button type="button" onclick="openIncidentModal()" class="whitespace-nowrap text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">+ Report an incident</button></div>
             </div>
             <p id="reports-admin-signin-note" class="bg-white border border-slate-200 rounded-2xl p-5 text-sm text-slate-600">Sign in as admin to view reports.</p>
             <div id="weekly-report-body" class="space-y-4"></div>
@@ -1233,13 +1234,51 @@
                 </button>
             </div>
             <form class="space-y-3" onsubmit="event.preventDefault(); submitAdminLogin(); return false;">
-                <input type="email" id="admin-login-email" name="username" autocomplete="username" placeholder="Email" class="w-full px-3.5 py-2.5 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <input type="email" id="admin-login-email" name="username" autocomplete="username" placeholder="Email" oninput="updateLoginMode()" class="w-full px-3.5 py-2.5 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <div id="admin-pass-area" class="space-y-3 hidden">
                 <input type="password" id="admin-login-password" name="password" autocomplete="current-password" placeholder="Password" onkeydown="if(event.key==='Enter') submitAdminLogin()" class="w-full px-3.5 py-2.5 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 <label class="flex items-center gap-2 text-xs font-semibold text-slate-600"><input type="checkbox" id="login-remember" checked class="rounded"> Keep me signed in on this device</label>
-                <p id="admin-login-error" class="text-xs font-semibold text-rose-600 hidden"></p>
+                                </div>
+<p id="admin-login-error" class="text-xs font-semibold text-rose-600 hidden"></p>
+                <div id="admin-submit-area" class="hidden">
                 <button type="submit" id="admin-login-submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition">Sign in</button>
+                </div>
                 <button type="button" onclick="sendPasswordReset()" class="w-full text-xs font-bold text-indigo-600 py-1">New device? Email me a sign-in link</button>
+                <div id="code-area" class="hidden space-y-2 pt-1">
+                    <p class="text-xs font-semibold text-slate-500">Using the installed app? Type the code from the email:</p>
+                    <input type="text" id="login-code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="Code from the email" onkeydown="if(event.key==='Enter'){event.preventDefault();submitEmailCode();}" class="w-full px-3.5 py-2.5 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                    <button type="button" onclick="submitEmailCode()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition">Sign in with code</button>
+                </div>
             </form>
+        </div>
+    </div>
+
+
+    <div id="incident-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-3 border border-slate-100 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 class="text-base font-black text-slate-900">Report an incident</h3>
+                <button type="button" onclick="closeIncidentModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg bg-slate-100 text-xs font-bold">Close</button>
+            </div>
+            <p class="text-xs font-semibold text-slate-500">The pastors will see this in the Incidents report for the week of the date you choose.</p>
+            <div>
+                <label for="incident-date" class="block text-xs font-bold text-slate-700 mb-1">Date of the incident *</label>
+                <input type="date" id="incident-date" class="w-full px-3.5 py-2.5 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div>
+                <label for="incident-title" class="block text-xs font-bold text-slate-700 mb-1">What happened (short) *</label>
+                <input type="text" id="incident-title" maxlength="140" class="w-full px-3.5 py-2.5 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div>
+                <label for="incident-details" class="block text-xs font-bold text-slate-700 mb-1">Details</label>
+                <textarea id="incident-details" rows="4" maxlength="2000" class="w-full px-3.5 py-2.5 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+            </div>
+            <p id="incident-error" class="text-xs font-semibold text-rose-600 hidden"></p>
+            <button type="button" id="incident-save-btn" onclick="saveIncident()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition">Save incident</button>
+            <div class="pt-2 border-t border-slate-100">
+                <p class="text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">Recent incidents</p>
+                <div id="incident-list" class="space-y-2"></div>
+            </div>
         </div>
     </div>
 
@@ -2355,18 +2394,19 @@
                     const t = trend[i];
                     if (!t) return;
                     let y = bar.y - 5;
-                    // the total from the uploaded sheet
+                    // change since the previous service sits just above the bar, smaller: green arrow up, red arrow down
+                    const dfs = Math.max(8, fs - 4);
+                    if (t.delta !== null && t.delta !== undefined) {
+                        const up = t.delta > 0, down = t.delta < 0;
+                        ctx.font = `700 ${dfs}px Inter, sans-serif`;
+                        ctx.fillStyle = up ? '#059669' : down ? '#e11d48' : '#94a3b8';
+                        ctx.fillText(up ? `▲ ${t.delta}` : down ? `▼ ${Math.abs(t.delta)}` : '–', bar.x, y);
+                        y -= dfs + 4;
+                    }
+                    // the total from the uploaded sheet, on top and bigger
                     ctx.font = `800 ${fs + 1}px Inter, sans-serif`;
                     ctx.fillStyle = '#0f172a';
                     ctx.fillText(String(t.total), bar.x, y);
-                    y -= fs + 5;
-                    // change since the previous service: green arrow up, red arrow down
-                    if (t.delta !== null && t.delta !== undefined) {
-                        const up = t.delta > 0, down = t.delta < 0;
-                        ctx.font = `800 ${fs}px Inter, sans-serif`;
-                        ctx.fillStyle = up ? '#059669' : down ? '#e11d48' : '#94a3b8';
-                        ctx.fillText(up ? `▲ ${t.delta}` : down ? `▼ ${Math.abs(t.delta)}` : '–', bar.x, y);
-                    }
                 });
                 ctx.restore();
             }
@@ -2509,7 +2549,7 @@
                     <div class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3">
                         <div class="min-w-0">
                             <p class="text-xs font-extrabold text-slate-900">${escapeHtml(formatReportDate(t.service.service_date))}</p>
-                            <p class="text-[11px] font-semibold ${c.kind === 'same' ? c.cls : 'text-slate-800'}">${deltaTextHTML(c)}</p>
+                            <p class="text-[10px] font-semibold ${c.kind === 'same' ? c.cls : 'text-slate-800'}">${deltaTextHTML(c)}</p>
                         </div>
                         <div class="shrink-0 text-right">
                             <p class="text-lg font-black text-slate-900 leading-none">${t.total}</p>
@@ -2531,7 +2571,7 @@
                         <div class="min-w-0">
                             <p class="text-[10px] font-black uppercase tracking-wider text-slate-500">${title}</p>
                             <p class="text-xs font-bold text-slate-700 mt-0.5">${escapeHtml(formatReportDate(t.service.service_date))}</p>
-                            <p class="text-xs font-bold mt-1 ${c.kind === 'same' ? c.cls : 'text-slate-800'}">${deltaTextHTML(c)}</p>
+                            <p class="text-[10px] font-bold mt-1 ${c.kind === 'same' ? c.cls : 'text-slate-800'}">${deltaTextHTML(c)}</p>
                         </div>
                         <p class="text-3xl font-black text-slate-900 shrink-0">${t.total}</p>
                     </div>`;
@@ -3960,7 +4000,7 @@
             if (viewId === 'church-life' || viewId === 'financial-vault') showHub(viewId);
             if (legacyProjectsRequest) switchChildTab('financial-vault', 'church-project-management');
             if (inPeopleFollowUp && previousView !== viewId) renderAll();
-            if (viewId === 'reports') renderWeeklyReport();
+            if (viewId === 'reports') { reportWeekPicked = false; renderWeeklyReport(); }
             if (viewId === 'registration') renderRegistration();
             if (viewId === 'special-access') { renderSpecialAccess(); markChatRead(); }
             if (viewId === 'access') renderAccessPage();
@@ -4477,9 +4517,11 @@
                     doc.setDrawColor(203, 213, 225); doc.line(40, y, W - 40, y); y += 14;
                     doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
                     lines.forEach(t => {
-                        doc.splitTextToSize(String(t), W - 80).forEach(part => {
+                        if (t === '') { y += 6; return; }
+                        doc.splitTextToSize(String(t), W - 96).forEach((part, pi) => {
                             if (y > H - 50) { doc.addPage(); y = 50; }
-                            doc.text(part, 40, y); y += 14;
+                            if (pi === 0) doc.text('\u2022', 42, y);
+                            doc.text(part, 56, y); y += 14;
                         });
                     });
                     y += 14;
@@ -4488,7 +4530,7 @@
             } else {
                 await loadLib('xlsx');
                 const rows = [['Section', 'Detail']];
-                secs.forEach(([title, lines]) => lines.forEach((t, i) => rows.push([i === 0 ? title : '', String(t)])));
+                secs.forEach(([title, lines]) => lines.filter(t => t !== '').forEach((t, i) => rows.push([i === 0 ? title : '', String(t)])));
                 const ws = XLSX.utils.aoa_to_sheet(rows);
                 ws['!cols'] = [{ wch: 30 }, { wch: 110 }];
                 const wb = XLSX.utils.book_new();
@@ -4810,7 +4852,7 @@
             const si = document.getElementById('admin-signin-btn');
             const so = document.getElementById('admin-signout-btn');
             if (si) si.classList.toggle('hidden', isAdmin || !!accessUser);
-            if (so) so.classList.toggle('hidden', !(isAdmin || accessUser));
+            if (so) so.classList.toggle('hidden', !isAdmin);
         }
 
         async function restoreAdminSession(attempt = 0) {
@@ -4825,8 +4867,17 @@
             if (isAdmin) { loadLedgerFromDb(); syncDeptData(); }
         }
 
+        function updateLoginMode() {
+            const em = (document.getElementById('admin-login-email').value || '').trim().toLowerCase();
+            const isA = em === ADMIN_EMAIL;
+            const pa = document.getElementById('admin-pass-area'), sa = document.getElementById('admin-submit-area');
+            if (pa) pa.classList.toggle('hidden', !isA);
+            if (sa) sa.classList.toggle('hidden', !isA);
+        }
         function openAdminLogin() {
             try { document.getElementById('admin-login-email').value = localStorage.getItem('kem_last_email') || ''; } catch (e) {}
+            updateLoginMode();
+            try { const ca = document.getElementById('code-area'); if (ca) ca.classList.add('hidden'); const lc = document.getElementById('login-code'); if (lc) lc.value = ''; } catch (e) {}
             document.getElementById('admin-login-password').value = '';
             const err = document.getElementById('admin-login-error');
             err.textContent = ''; err.classList.add('hidden');
@@ -4843,6 +4894,7 @@
             const password = document.getElementById('admin-login-password').value;
             const err = document.getElementById('admin-login-error');
             const btn = document.getElementById('admin-login-submit');
+            if (email !== ADMIN_EMAIL) { sendPasswordReset(); return; }
             const fail = (msg) => { err.textContent = msg; err.classList.remove('hidden'); };
             err.classList.add('hidden');
             if (!email || !password) { fail('Enter the admin email and password.'); return; }
@@ -4883,7 +4935,7 @@
             isAdmin = false;
             accessUser = null;
             deptAssign = {};
-            try { localStorage.removeItem(ACCESS_SESSION_KEY); } catch (e) {}
+            try { removeAccessSession(); } catch (e) {}
             if (scopedMembersRef && members === scopedMembersRef) members = membersFull;
             scopedMembersRef = null;
             teamMsgs = [];
@@ -5722,8 +5774,22 @@ function renderAccessPage() {
         // ---------- Special access sign-in: own password, stay signed in, reset link ----------
         const ACCESS_SESSION_KEY = 'kem_access_session_v1';
         let kemAccessErr = '';
+        // Small copy of the sign-in kept in a cookie. On iPhones the cookie is carried into the home-screen app when it is installed.
+        function kemCookiePath() { return location.pathname.replace(/[^\/]*$/, '') || '/'; }
+        function setAccessCookie(rt) {
+            try { document.cookie = 'kem_rt=' + encodeURIComponent(rt) + '; path=' + kemCookiePath() + '; max-age=31536000; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : ''); } catch (e) {}
+        }
+        function getAccessCookie() {
+            try { const m = document.cookie.match(/(?:^|; )kem_rt=([^;]*)/); return m ? decodeURIComponent(m[1]) : ''; } catch (e) { return ''; }
+        }
+        function removeAccessSession() {
+            try { localStorage.removeItem(ACCESS_SESSION_KEY); } catch (e) {}
+            try { document.cookie = 'kem_rt=; path=' + kemCookiePath() + '; max-age=0; SameSite=Lax'; } catch (e) {}
+        }
         function saveAccessSession(sess) {
+            try { if (sess && sess.user && String(sess.user.email || '').toLowerCase() === ADMIN_EMAIL) return; } catch (e) {}   // admin always types the password
             try { localStorage.setItem(ACCESS_SESSION_KEY, JSON.stringify({ access_token: sess.access_token, refresh_token: sess.refresh_token })); } catch (e) {}
+            if (sess && sess.refresh_token) setAccessCookie(sess.refresh_token);
         }
         function watchAccessTokens(c) {
             if (c.__kemWatch) return;
@@ -5736,7 +5802,7 @@ function renderAccessPage() {
             kemAccessErr = '';
             const { data: row, error: rowErr } = await c.from('church_access').select('*').ilike('email', String(email || '').trim()).limit(1).maybeSingle();
             if (rowErr) { kemAccessErr = 'Signed in as ' + email + ', but the database refused to show your access (' + (rowErr.message || 'error') + '). The admin must run the access-permission SQL in Supabase.'; return false; }
-            if (!row) { kemAccessErr = 'No access has been given to ' + email + '. Ask the admin to add this exact email in Give Access.'; await c.auth.signOut(); try { localStorage.removeItem(ACCESS_SESSION_KEY); } catch (e) {} return false; }
+            if (!row) { kemAccessErr = 'No access has been given to ' + email + '. Ask the admin to add this exact email in Give Access.'; await c.auth.signOut(); try { removeAccessSession(); } catch (e) {} return false; }
             accessUser = row;
             if (remember && sess) saveAccessSession(sess);
             watchAccessTokens(c);
@@ -5750,27 +5816,57 @@ function renderAccessPage() {
             else { let v = ''; try { v = localStorage.getItem('kem_last_view_' + String(row.email || '').toLowerCase()) || ''; } catch (e) {} if (v && v !== 'people-follow-up' && v !== 'special-access') switchPrimaryView(v); }
             return true;
         }
-        async function restoreAccessSession() {
+        async function restoreAccessSession(attempt = 0) {
             let raw = null;
             try { raw = localStorage.getItem(ACCESS_SESSION_KEY); } catch (e) {}
-            if (!raw) return;
+            const cookieRt = raw ? '' : getAccessCookie();
+            if (!raw && !cookieRt) return;
             try {
-                const c = await getAdminAuthClient();
+                // The database connection may still be starting: wait for it instead of giving up and asking for a password
+                let c = null;
+                for (let i = 0; i < 200 && !c; i++) { c = await getAdminAuthClient(); if (!c) await new Promise(r => setTimeout(r, 100)); }
                 if (!c) return;
-                const { data, error } = await c.auth.setSession(JSON.parse(raw));
+                const doRestore = () => cookieRt ? c.auth.refreshSession({ refresh_token: cookieRt }) : c.auth.setSession(JSON.parse(raw));
+                let res = await doRestore();
+                // A bad connection is not a bad sign-in: try again a few times before giving up
+                for (let i = 0; i < 3 && res.error && /fetch|network|load failed|timeout/i.test(String(res.error.message || '')); i++) {
+                    await new Promise(r => setTimeout(r, 1500));
+                    res = await doRestore();
+                }
+                const { data, error } = res;
                 if (error || !data.session) throw (error || new Error('expired'));
                 const email = (data.session.user.email || '').toLowerCase();
                 if (email === ADMIN_EMAIL) {
-                    isAdmin = true; watchAccessTokens(c); applyAdminUI();
-                    const bg = f => { try { return Promise.resolve(f()).catch(() => {}); } catch (e) { return Promise.resolve(); } };
-                    Promise.all([bg(loadPartnerRecords), bg(loadProjectRecords), bg(loadDeptAssignments), bg(loadLedgerFromDb)]).then(() => { try { renderAll(); } catch (e) {} bg(syncDeptData); });
+                    // Automatic sign-in is for people who were emailed a link. The admin always types the password.
+                    try { removeAccessSession(); } catch (e) {}
+                    try { await c.auth.signOut(); } catch (e) {}
                     return;
                 }
-                if (!(await finishAccessLogin(c, email, true, data.session))) { if (/^No access/.test(kemAccessErr)) localStorage.removeItem(ACCESS_SESSION_KEY); else if (kemAccessErr) showToast(kemAccessErr); }
+                saveAccessSession(data.session);   // keep the newest token so the next open still works
+                if (!(await finishAccessLogin(c, email, true, data.session))) { if (/^No access/.test(kemAccessErr)) removeAccessSession(); else if (kemAccessErr) showToast(kemAccessErr); }
             } catch (e) {
                 console.warn('Saved sign-in could not be restored:', e);
-                if (e && /invalid|expired|not found|revoked/i.test(e.message || '')) { try { localStorage.removeItem(ACCESS_SESSION_KEY); } catch (x) {} }
+                if (!(e && /invalid|expired|not found|revoked|already used/i.test(e.message || '')) && attempt < 8) { setTimeout(() => { if (!accessUser && !isAdmin) restoreAccessSession(attempt + 1); }, 4000); }
+                if (e && /invalid|expired|not found|revoked/i.test(e.message || '')) { try { removeAccessSession(); } catch (x) {} }
             }
+        }
+        async function submitEmailCode() {
+            const email = document.getElementById('admin-login-email').value.trim().toLowerCase();
+            const token = (document.getElementById('login-code').value || '').replace(/\s+/g, '');
+            if (!email || !token) { showToast('Type your email and the code from the email.'); return; }
+            if (email === ADMIN_EMAIL) return;
+            try {
+                const c = await getAdminAuthClient();
+                if (!c) throw new Error('offline');
+                const { data, error } = await c.auth.verifyOtp({ email, token, type: 'email' });
+                if (error || !data || !data.session) { showToast('That code is wrong or has expired. Request a new one.'); return; }
+                if (await finishAccessLogin(c, email, true, data.session)) {
+                    try { localStorage.setItem('kem_last_email', email); } catch (e) {}
+                    closeAdminLogin();
+                    showToast('Welcome! You are signed in on this device.');
+                    switchPrimaryView(isRegistrationUser() ? 'registration' : 'people-follow-up');
+                } else { showToast(kemAccessErr || 'This email has no access yet. Ask the admin.'); }
+            } catch (e) { showToast('Could not sign in. Check your connection.'); }
         }
         async function sendPasswordReset() {
             const email = document.getElementById('admin-login-email').value.trim();
@@ -5792,7 +5888,7 @@ function renderAccessPage() {
                         if (/not allowed|not found|signups?/i.test(m)) { showToast('This email has no access yet. Ask the admin.'); return; }
                         throw error;
                     }
-                    showToast('Check your email and tap the link to sign in on this device.');
+                    showToast('Check your email. Tap the link, or type the code here if you use the installed app.'); const ca = document.getElementById('code-area'); if (ca) ca.classList.remove('hidden');
                 }
             } catch (e) { showToast('Could not send the email. Check your connection.'); }
         }
@@ -6494,6 +6590,7 @@ function renderAccessPage() {
         const KEM_INITIAL_HASH = window.KEM_HASH0 || location.hash || '';
         // The app always opens in the read-only view. Admin only after typing the password; any old saved admin login is wiped.
         try { localStorage.removeItem('kem_admin_auth_v1'); } catch (e) {}
+        try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
         applyAdminUI();
         handleAuthLink().then(() => { if (!accessUser) return restoreAccessSession(); }).catch(() => {}).then(() => { delete document.documentElement.dataset.pending; updateGate(); });
         setTimeout(() => { try { getAdminAuthClient().catch(() => {}); } catch (e) {} }, 1500);   // get the sign-in ready before anyone taps it
@@ -8687,6 +8784,83 @@ function renderAccessPage() {
         // =====================================================================
         // WEEKLY REPORT (Reports tab): read-only summary of every area, one week at a time (Sunday to Saturday)
         // =====================================================================
+
+        // =====================================================================
+        // INCIDENTS: the admin reports them, pastors read them in the weekly report (Supabase table: church_incidents)
+        // =====================================================================
+        let incidentRecords = [], incidentsLoadedAt = 0, incidentsError = '';
+        async function loadIncidents() {
+            if (!canRep()) return;
+            incidentsLoadedAt = Date.now();
+            try {
+                const c = await ledgerClient();
+                if (!c) throw new Error('not connected');
+                const { data, error } = await c.from('church_incidents').select('*').order('incident_date', { ascending: false }).limit(300);
+                if (error) throw error;
+                incidentRecords = data || []; incidentsError = '';
+            } catch (e) {
+                incidentRecords = [];
+                incidentsError = /relation|does not exist|schema cache|church_incidents/i.test(String((e && e.message) || '')) ? 'setup' : 'load';
+            }
+            incidentsLoadedAt = Date.now();
+            try { if (activePrimaryView === 'reports') renderWeeklyReport(); } catch (e) {}
+            try { renderIncidentList(); } catch (e) {}
+        }
+        function renderIncidentList() {
+            const box = document.getElementById('incident-list'); if (!box) return;
+            if (incidentsError === 'setup') { box.innerHTML = '<p class="text-xs text-rose-600">Incidents are not set up yet. Run the incidents SQL in Supabase once, then try again.</p>'; return; }
+            const list = incidentRecords.slice(0, 15);
+            box.innerHTML = list.length ? list.map(r => `<div class="flex items-start justify-between gap-2 bg-slate-50 border border-slate-200 rounded-xl p-2.5"><div class="min-w-0"><p class="text-[11px] font-bold text-slate-500">${escapeHtml(formatReportDate(String(r.incident_date).slice(0, 10)))}</p><p class="text-xs font-bold text-slate-800 break-words">${escapeHtml(r.title || '')}</p></div><button type="button" onclick="deleteIncident('${String(r.id).replace(/'/g, '')}')" class="shrink-0 text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-100 rounded-lg px-2 py-1">Delete</button></div>`).join('') : '<p class="text-xs text-slate-400">No incidents yet.</p>';
+        }
+        function openIncidentModal() {
+            if (!isAdmin) return;
+            document.getElementById('incident-date').value = todayStr();
+            document.getElementById('incident-title').value = '';
+            document.getElementById('incident-details').value = '';
+            document.getElementById('incident-error').classList.add('hidden');
+            document.getElementById('incident-modal').classList.remove('hidden');
+            renderIncidentList();
+            loadIncidents();
+        }
+        function closeIncidentModal() { document.getElementById('incident-modal').classList.add('hidden'); }
+        async function saveIncident() {
+            if (!isAdmin) return;
+            const date = document.getElementById('incident-date').value;
+            const title = document.getElementById('incident-title').value.trim();
+            const details = document.getElementById('incident-details').value.trim();
+            const err = document.getElementById('incident-error');
+            const btn = document.getElementById('incident-save-btn');
+            const fail = m => { err.textContent = m; err.classList.remove('hidden'); };
+            err.classList.add('hidden');
+            if (!date) return fail('Choose the date of the incident.');
+            if (!title) return fail('Write what happened.');
+            btn.disabled = true; btn.textContent = 'Saving...';
+            try {
+                const c = await ledgerClient();
+                if (!c) throw new Error('not connected');
+                const { error } = await c.from('church_incidents').insert({ incident_date: date, title, details: details || null });
+                if (error) throw error;
+                document.getElementById('incident-title').value = '';
+                document.getElementById('incident-details').value = '';
+                showToast('Incident saved');
+                await loadIncidents();
+            } catch (e) {
+                fail(/relation|does not exist|schema cache/i.test(String((e && e.message) || '')) ? 'Incidents are not set up yet. Run the incidents SQL in Supabase once.' : 'Could not save. Check your connection and try again.');
+            }
+            btn.disabled = false; btn.textContent = 'Save incident';
+        }
+        async function deleteIncident(id) {
+            if (!isAdmin) return;
+            if (!confirm('Delete this incident?')) return;
+            try {
+                const c = await ledgerClient();
+                const { error } = await c.from('church_incidents').delete().eq('id', id);
+                if (error) throw error;
+                showToast('Incident deleted');
+                await loadIncidents();
+            } catch (e) { showToast('Could not delete. Try again.'); }
+        }
+
         let reportWeekStart = '';
 
         function rpDateStr(d) {
@@ -8715,7 +8889,9 @@ function renderAccessPage() {
             while (s >= first && list.length < 104) { list.push(s); s = rpAddDays(s, -7); }
             return list.length ? list : [lastEnded];
         }
+        let reportWeekPicked = false;
         function setReportWeek(v) {
+            reportWeekPicked = true;
             reportWeekStart = v;
             renderWeeklyReport();
         }
@@ -8734,7 +8910,7 @@ function renderAccessPage() {
             const esc = escapeHtml;
             const today = todayStr();
             const weeks = getReportWeekOptions();
-            if (!weeks.includes(reportWeekStart)) reportWeekStart = weeks[0];
+            if (!reportWeekPicked || !weeks.includes(reportWeekStart)) reportWeekStart = weeks[0];
             const ws = reportWeekStart, we = rpAddDays(ws, 6);
             sel.innerHTML = weeks.map((w, i) => `<option value="${w}">${i === 0 ? 'Last week' : 'Week'} • ${esc(formatReportShortDate(w))} – ${esc(formatReportShortDate(rpAddDays(w, 6)))}</option>`).join('');
             sel.value = ws;
@@ -8746,15 +8922,17 @@ function renderAccessPage() {
             const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
             // ----- Attendance: Sunday, Wednesday and any other service that week -----
+            // Every fact starts on its own line; '' is a small gap between groups
             const sameDay = day => getAllSortedServices().filter(x => x.day_of_week === day && String(x.service_date) >= CHART_START_DATE);
             const attText = s => {
                 const label = `${s.day_of_week} ${formatReportShortDate(s.service_date)}`;
-                if (String(s.service_date) > today) return `${label}: upcoming.`;
+                if (String(s.service_date) > today) return [`${label}: upcoming`];
                 const total = getServiceTotal(s);
-                if (!total) return `${label}: attendance not recorded.`;
+                if (!total) return [`${label}: attendance not recorded`];
                 const t = getServiceTrend(sameDay(s.day_of_week)).find(x => x.service.id === s.id);
-                const change = !t || t.delta === null ? '' : t.delta > 0 ? `, increased by ${t.delta} since last time` : t.delta < 0 ? `, reduced by ${Math.abs(t.delta)} since last time` : ', same as last time';
-                return `${label}: ${total} present${change}.`;
+                const out = [`${label}: ${total} present`];
+                if (t && t.delta !== null) out.push(t.delta > 0 ? `Change: increased by ${t.delta} since last time` : t.delta < 0 ? `Change: reduced by ${Math.abs(t.delta)} since last time` : 'Change: same as last time');
+                return out;
             };
             // Only services of this week that really have attendance recorded; if two records share a day, keep the one with attendance
             const weekByDay = {};
@@ -8764,49 +8942,80 @@ function renderAccessPage() {
             });
             const weekServices = Object.values(weekByDay).sort((a, b) => String(a.service_date).localeCompare(String(b.service_date)));
             const attLines = [];
+            const gap = arr => { if (arr.length && arr[arr.length - 1] !== '') arr.push(''); };
+            const trimGap = arr => { while (arr.length && arr[arr.length - 1] === '') arr.pop(); return arr; };
             ['Sunday', 'Wednesday'].forEach(day => {
                 const list = weekServices.filter(x => x.day_of_week === day);
-                if (!list.length) attLines.push(`${day}: N/A`);
-                list.forEach(x => attLines.push(attText(x)));
+                if (!list.length) { gap(attLines); attLines.push(`${day}: N/A`); }
+                list.forEach(x => { gap(attLines); attText(x).forEach(l => attLines.push(l)); });
             });
-            weekServices.filter(x => x.day_of_week !== 'Sunday' && x.day_of_week !== 'Wednesday').forEach(x => attLines.push(attText(x)));
+            weekServices.filter(x => x.day_of_week !== 'Sunday' && x.day_of_week !== 'Wednesday').forEach(x => { gap(attLines); attText(x).forEach(l => attLines.push(l)); });
+            trimGap(attLines);
 
             // ----- Income -----
             const offerings = getLedger('offerings').filter(r => dateIn(r.date));
             const tithes = getLedger('tithes').filter(r => dateIn(r.date));
             const incomeLines = [];
-            if (offerings.length) incomeLines.push(`Offerings: ${money(sumAmount(offerings))} (${plural(offerings.length, 'entry', 'entries')}).`);
-            if (tithes.length) incomeLines.push(`Tithes: ${money(sumAmount(tithes))} (${plural(tithes.length, 'entry', 'entries')}).`);
-            if (offerings.length || tithes.length) incomeLines.push(`Total income: ${money(sumAmount(offerings) + sumAmount(tithes))}.`);
+            if (offerings.length) { incomeLines.push(`Offerings: ${money(sumAmount(offerings))}`); incomeLines.push(`Offering entries: ${offerings.length}`); gap(incomeLines); }
+            if (tithes.length) { incomeLines.push(`Tithes: ${money(sumAmount(tithes))}`); incomeLines.push(`Tithe entries: ${tithes.length}`); gap(incomeLines); }
+            if (offerings.length || tithes.length) { incomeLines.push(`Total income: ${money(sumAmount(offerings) + sumAmount(tithes))}`); gap(incomeLines); }
             const partnersJoined = partnerRecords.filter(p => timeIn(p.created_at));
-            if (partnersJoined.length) incomeLines.push(`Partners who joined: ${partnersJoined.length}.`);
+            if (partnersJoined.length) incomeLines.push(`Partners who joined: ${partnersJoined.length}`);
+            trimGap(incomeLines);
 
             // ----- Expenditure -----
             const spent = getLedger('expenditures').filter(r => dateIn(r.date));
             // Weekly requisitions (from the departments) come first, then the weekly expenditure
             const weekReqs = readDeptStore(REQUISITION_STORAGE_KEY).filter(r => timeIn(r.created));
-            const spentLines = weekReqs.map(r => `Requisition, ${r.department}: ${r.item}, ${money(r.amount)}, ${String(r.status || 'Pending').toLowerCase()}.`);
-            if (weekReqs.length) spentLines.push(`Total weekly requisitions: ${money(sumAmount(weekReqs))} (${plural(weekReqs.length, 'requisition', 'requisitions')}).`);
-            spent.forEach(r => spentLines.push(`Expenditure: ${r.desc || 'Expense'}: ${money(r.amount)}${r.paid_to ? `, paid to ${r.paid_to}` : ''}${r.category ? ` (reason: ${r.category})` : ''}.`));
+            const spentLines = [];
+            weekReqs.forEach(r => {
+                spentLines.push(`Requisition: ${r.item}`);
+                spentLines.push(`Department: ${r.department}`);
+                spentLines.push(`Amount: ${money(r.amount)}`);
+                spentLines.push(`Status: ${String(r.status || 'Pending').toLowerCase()}`);
+                gap(spentLines);
+            });
+            if (weekReqs.length) { spentLines.push(`Number of requisitions: ${weekReqs.length}`); spentLines.push(`Total weekly requisitions: ${money(sumAmount(weekReqs))}`); gap(spentLines); }
+            spent.forEach(r => {
+                spentLines.push(`Expenditure: ${r.desc || 'Expense'}`);
+                spentLines.push(`Amount: ${money(r.amount)}`);
+                if (r.paid_to) spentLines.push(`Paid to: ${r.paid_to}`);
+                if (r.category) spentLines.push(`Reason: ${r.category}`);
+                gap(spentLines);
+            });
             if (spent.length || weekReqs.length) {
                 const incomeWeek = sumAmount(offerings) + sumAmount(tithes);
                 const bal = incomeWeek - sumAmount(spent);
-                spentLines.push(`Total weekly expenditure: ${money(sumAmount(spent))}.`);
-                spentLines.push(`Income received this week: ${money(incomeWeek)}.`);
-                spentLines.push(`Balance (income minus weekly expenditure): ${bal < 0 ? '-' : ''}${money(Math.abs(bal))}.`);
+                spentLines.push(`Total weekly expenditure: ${money(sumAmount(spent))}`);
+                spentLines.push(`Income received this week: ${money(incomeWeek)}`);
+                spentLines.push(`Balance (income minus expenditure): ${bal < 0 ? '-' : ''}${money(Math.abs(bal))}`);
             }
+            trimGap(spentLines);
 
             // ----- Projects and enterprise activities (only what changed this week) -----
-            const projLine = (kind, r) => `${kind}: ${r.name} is ${String(r.status || '').toLowerCase()}${r.status === 'Stopped' && r.stopped_reason ? ` (reason: ${r.stopped_reason})` : ''}.`;
-            const projLines = projectRecords.filter(r => timeIn(r.updated_at)).map(r => projLine('Project', r))
-                .concat(enterpriseActivityRecords.filter(r => timeIn(r.updated_at)).map(r => projLine('Enterprise activity', r)));
+            const projLines = [];
+            const projAdd = (kind, r) => {
+                projLines.push(`${kind}: ${r.name}`);
+                projLines.push(`Status: ${String(r.status || '').toLowerCase()}`);
+                if (r.status === 'Stopped' && r.stopped_reason) projLines.push(`Reason: ${r.stopped_reason}`);
+                gap(projLines);
+            };
+            projectRecords.filter(r => timeIn(r.updated_at)).forEach(r => projAdd('Project', r));
+            enterpriseActivityRecords.filter(r => timeIn(r.updated_at)).forEach(r => projAdd('Enterprise activity', r));
+            trimGap(projLines);
 
             // ----- Staff (no staff records are kept yet) -----
             const staffLines = [];
 
             // ----- Departments (requisitions and progress saved in this browser) -----
             const deptLines = [];
-            readDeptStore(PROGRESS_STORAGE_KEY).filter(r => dateIn(r.date)).forEach(r => deptLines.push(`${r.department} progress: ${r.title}, ${Number(r.percent) || 0}% complete.`));
+            readDeptStore(PROGRESS_STORAGE_KEY).filter(r => dateIn(r.date)).forEach(r => {
+                deptLines.push(`Department: ${r.department}`);
+                deptLines.push(`Progress on: ${r.title}`);
+                deptLines.push(`Complete: ${Number(r.percent) || 0}%`);
+                gap(deptLines);
+            });
+            trimGap(deptLines);
 
             // ----- Calls -----
             const weekCalls = calls.filter(c => timeIn(c.called_at));
@@ -8816,10 +9025,15 @@ function renderAccessPage() {
                 const awaiting = weekCalls.filter(c => c.outcome === 'Pending').length;
                 const reached = weekCalls.length - unreachable - awaiting;
                 const people = new Set(weekCalls.map(c => String(c.member_id))).size;
-                callLines.push(`${plural(weekCalls.length, 'call', 'calls')} made to ${plural(people, 'person', 'people')}: ${reached} reached, ${unreachable} unreachable${awaiting ? `, ${awaiting} awaiting a result` : ''}.`);
+                callLines.push(`${plural(weekCalls.length, 'call', 'calls')} made to ${plural(people, 'person', 'people')}`);
+                callLines.push(`${reached} reached`);
+                callLines.push(`${unreachable} unreachable`);
+                if (awaiting) callLines.push(`${awaiting} awaiting a result`);
+                gap(callLines);
                 const byCaller = {};
                 weekCalls.forEach(c => { const n = c.caller_name || 'Unknown'; byCaller[n] = (byCaller[n] || 0) + 1; });
-                callLines.push('Calls by person: ' + Object.entries(byCaller).sort((a, b) => b[1] - a[1]).map(([n, c]) => `${n} ${c}`).join(', ') + '.');
+                callLines.push('Calls by person');
+                Object.entries(byCaller).sort((a, b) => b[1] - a[1]).forEach(([n, c]) => callLines.push(`${n}: ${c}`));
             }
 
             // ----- Growth targets: monthly target vs people gained, plus who brought the new people this week -----
@@ -8832,30 +9046,50 @@ function renderAccessPage() {
                 const ach = g.achieved[gm] || { men: 0, women: 0, youth: 0 };
                 const gained = GROWTH_GROUPS.reduce((t, x) => t + (ach[x.key] || 0), 0);
                 const pctOf = (a, t) => t > 0 ? Math.round(Math.min(100, a / t * 100)) : 0;
-                growthLines.push(`${monthName} target: ${gained} of ${g.total} new people (${pctOf(gained, g.total)}%).`);
+                growthLines.push(`${monthName} target: ${gained} of ${g.total} new people`);
+                growthLines.push(`Progress: ${pctOf(gained, g.total)}%`);
+                gap(growthLines);
                 let hit = 0;
                 GROWTH_GROUPS.forEach(x => {
                     const t = g.split[x.key] || 0, a = ach[x.key] || 0;
                     if (t > 0 && a >= t) hit++;
-                    growthLines.push(`${x.label}: ${a} of ${t}${t > 0 && a >= t ? ', target reached' : ''}.`);
+                    growthLines.push(`${x.label}: ${a} of ${t}${t > 0 && a >= t ? ', target reached' : ''}`);
                 });
-                growthLines.push(`Targets hit: ${hit} of ${GROWTH_GROUPS.length}.`);
+                gap(growthLines);
+                growthLines.push(`Targets hit: ${hit} of ${GROWTH_GROUPS.length}`);
+                gap(growthLines);
                 const newThisWeek = members.filter(m => (m.member_category === 'FIRST_TIMER' && dateIn(getFirstVisitDate(m))) || (m.member_category === 'NEW_CONVERT' && dateIn(getConvertDate(m))));
                 const ftN = newThisWeek.filter(m => m.member_category === 'FIRST_TIMER').length, ncN = newThisWeek.length - ftN;
-                growthLines.push(`New people this week: ${newThisWeek.length} (${plural(ftN, 'first timer', 'first timers')}, ${plural(ncN, 'new convert', 'new converts')}).`);
+                growthLines.push(`New people this week: ${newThisWeek.length}`);
+                growthLines.push(`First timers: ${ftN}`);
+                growthLines.push(`New converts: ${ncN}`);
                 const byInviter = {};
                 newThisWeek.forEach(m => { const k = String(m.invited_by || '').trim() || 'N/A'; (byInviter[k] = byInviter[k] || []).push(m.name); });
                 Object.keys(byInviter).sort((a, b) => (a === 'N/A') - (b === 'N/A') || byInviter[b].length - byInviter[a].length).forEach(k => {
-                    growthLines.push(k === 'N/A' ? `Brought by (not recorded): ${byInviter[k].join(', ')}.` : `Brought by ${k} (${byInviter[k].length}): ${byInviter[k].join(', ')}.`);
+                    gap(growthLines);
+                    growthLines.push(k === 'N/A' ? `Brought by: not recorded (${byInviter[k].length})` : `Brought by: ${k} (${byInviter[k].length})`);
+                    growthLines.push(`Names: ${byInviter[k].join(', ')}`);
                 });
             }
 
-            const secIcons = { 'Attendance report': 'users', 'Income report': 'banknote', 'Bills and expenditure report': 'receipt', 'Projects report': 'folder', 'Staff report': 'briefcase-business', 'Departmental report': 'layers', 'Calls report': 'phone-call', 'Growth targets report': 'trending-up' };
-            const section = (title, lines) => `<section class="break-inside-avoid mb-3 bg-white border border-slate-200 rounded-2xl p-4 shadow-sm"><h3 class="flex items-center gap-2 text-sm font-extrabold text-slate-900 pb-2 mb-2 border-b border-slate-100"><i data-lucide="${secIcons[title] || 'file-text'}" class="w-4 h-4 text-slate-400"></i>${title}</h3><div class="space-y-1.5">${lines.length ? lines.map(t => `<p class="text-[13px] leading-snug text-slate-700">${esc(t).replace(/(increased by )(\d+)/g, '$1<span class="font-bold text-emerald-600">$2</span>').replace(/(reduced by )(\d+)/g, '$1<span class="font-bold text-rose-600">$2</span>')}</p>`).join('') : '<p class="text-xs text-slate-400">N/A</p>'}</div></section>`;
+            // ----- Incidents (reported by the admin) -----
+            const incidentLines = [];
+            incidentRecords.filter(r => dateIn(r.incident_date)).sort((a, b) => String(a.incident_date).localeCompare(String(b.incident_date))).forEach(r => {
+                incidentLines.push(`Date of incident: ${formatReportDate(String(r.incident_date).slice(0, 10))}`);
+                incidentLines.push(`Incident: ${r.title}`);
+                if (r.details) incidentLines.push(`Details: ${r.details}`);
+                gap(incidentLines);
+            });
+            trimGap(incidentLines);
+            if (isAdmin && incidentsError === 'setup') incidentLines.push('Incidents are not set up yet. Run the incidents SQL in Supabase once.');
+            if (Date.now() - incidentsLoadedAt > 60000) { incidentsLoadedAt = Date.now(); loadIncidents(); }
+
+            const secIcons = { 'Attendance report': 'users', 'Income report': 'banknote', 'Bills and expenditure report': 'receipt', 'Projects report': 'folder', 'Staff report': 'briefcase-business', 'Departmental report': 'layers', 'Calls report': 'phone-call', 'Growth targets report': 'trending-up', 'Incidents report': 'alert-triangle' };
+            const section = (title, lines) => `<section class="break-inside-avoid mb-3 bg-white border border-slate-200 rounded-2xl p-4 shadow-sm"><h3 class="flex items-center gap-2 text-sm font-extrabold text-slate-900 pb-2 mb-2 border-b border-slate-100"><i data-lucide="${secIcons[title] || 'file-text'}" class="w-4 h-4 text-slate-400"></i>${title}</h3><div class="space-y-0.5">${lines.length ? lines.map(t => { if (t === '') return '<div class="h-1.5"></div>'; const i = String(t).indexOf(': '); const lab = i > 0 && i < 46 ? String(t).slice(0, i + 1) : '', val = lab ? String(t).slice(i + 2) : String(t); const v = esc(val).replace(/(increased by )(\d+)/g, '$1<span class="font-bold text-emerald-600 text-[10px]">$2</span>').replace(/(reduced by )(\d+)/g, '$1<span class="font-bold text-rose-600 text-[10px]">$2</span>'); return `<p class="flex items-start gap-1.5 text-[12px] leading-snug text-slate-700"><span class="w-1 h-1 rounded-full bg-slate-400 mt-[6px] shrink-0" aria-hidden="true"></span><span class="min-w-0">${lab ? `<span class="font-semibold text-slate-900">${esc(lab)}</span> ` : ''}${v}</span></p>`; }).join('') : '<p class="text-xs text-slate-400">N/A</p>'}</div></section>`;
             body.innerHTML = `
                 <div class="text-sm">
                     <div class="lg:columns-2 lg:gap-x-3">
-                    ${[['Attendance report', attLines], ['Income report', incomeLines], ['Bills and expenditure report', spentLines], ['Projects report', projLines], ['Staff report', staffLines], ['Departmental report', deptLines], ['Calls report', callLines], ['Growth targets report', growthLines]]
+                    ${[['Attendance report', attLines], ['Income report', incomeLines], ['Bills and expenditure report', spentLines], ['Projects report', projLines], ['Staff report', staffLines], ['Departmental report', deptLines], ['Calls report', callLines], ['Growth targets report', growthLines], ['Incidents report', incidentLines]]
                         .map((x, i) => ({ x, i })).sort((p, q) => ((p.x[1].length === 0) - (q.x[1].length === 0)) || (p.i - q.i))
                         .map(o => section(o.x[0], o.x[1])).join('')}
                     </div>
@@ -8864,7 +9098,7 @@ function renderAccessPage() {
             window.lastWeeklyReport = { ws, we, sections: [
                 ['Attendance report', attLines], ['Income report', incomeLines], ['Bills and expenditure report', spentLines],
                 ['Projects report', projLines], ['Staff report', staffLines], ['Departmental report', deptLines],
-                ['Calls report', callLines], ['Growth targets report', growthLines]
+                ['Calls report', callLines], ['Growth targets report', growthLines], ['Incidents report', incidentLines]
             ] };
             updateDownloadVisibility();
         }
