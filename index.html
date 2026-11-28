@@ -5029,11 +5029,26 @@
                 showToast(sent.ok ? 'Access added. A link to create a password was emailed to ' + row.email : 'Access added, but the email was not sent: ' + sent.msg);
             } catch (e) { showToast('Could not save access: ' + ((e && e.message) || 'error')); }
         }
+        // ===== PUBLIC APP ADDRESS =====
+        // Put the real, live web address of this app between the quotes, e.g. 'https://mychurch.netlify.app/'
+        // Links emailed to people (access links, password resets) will open THIS address.
+        const PUBLIC_APP_URL = '';
+        function isLocalAddress() {
+            return /^(localhost|127\.|0\.0\.0\.0|192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(location.hostname) || location.hostname === '[::1]';
+        }
+        function appLinkBase() {
+            if (PUBLIC_APP_URL && PUBLIC_APP_URL.trim()) return PUBLIC_APP_URL.trim();
+            return location.origin + location.pathname;
+        }
+        function localLinkProblem() {
+            return (!(PUBLIC_APP_URL && PUBLIC_APP_URL.trim()) && isLocalAddress());
+        }
         // Emails a one-time link (Supabase). The person opens it, chooses their own password and is signed in.
         // A separate temporary client is used so the admin's own session is never touched.
         async function sendAccessLink(email) {
             const addr = String(email || '').trim().toLowerCase();
             if (!addr) return { ok: false, msg: 'no email' };
+            if (localLinkProblem()) return { ok: false, msg: 'this app is open on a local address (localhost), so the link would not work for others. Set PUBLIC_APP_URL in the code to your live web address, or open the live site and send from there.' };
             try {
                 const main = window.supabaseClient;
                 if (!main || !main.supabaseUrl || !main.supabaseKey) return { ok: false, msg: 'not connected to the database' };
@@ -5043,7 +5058,7 @@
                 }
                 if (!lib) return { ok: false, msg: 'could not load the sign-in library' };
                 const tmp = lib.createClient(main.supabaseUrl, main.supabaseKey, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
-                const { error } = await tmp.auth.signInWithOtp({ email: addr, options: { shouldCreateUser: true, emailRedirectTo: location.origin + location.pathname } });
+                const { error } = await tmp.auth.signInWithOtp({ email: addr, options: { shouldCreateUser: true, emailRedirectTo: appLinkBase() } });
                 if (error) {
                     const m = String(error.message || '');
                     if (/rate limit|too many|seconds/i.test(m)) return { ok: false, msg: 'too many emails sent. Wait a few minutes and tap Send link.' };
@@ -5206,10 +5221,11 @@
         async function sendPasswordReset() {
             const email = document.getElementById('admin-login-email').value.trim();
             if (!email) { showToast('Type your email first, then tap this again.'); return; }
+            if (localLinkProblem()) { showToast('Open the live website (not localhost) or set PUBLIC_APP_URL, then try again.'); return; }
             try {
                 const c = await getAdminAuthClient();
                 if (!c) throw new Error('offline');
-                const { error } = await c.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+                const { error } = await c.auth.resetPasswordForEmail(email, { redirectTo: appLinkBase() });
                 if (error) throw error;
                 showToast('Check your email for the link to set your password.');
             } catch (e) { showToast('Could not send the email. Check your connection.'); }
