@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" class="h-full">
 <head>
-<script>window.KEM_HASH0 = location.hash || '';</script>
+<script>window.KEM_HASH0 = location.hash || '';try{if(localStorage.getItem('kem_access_session_v1')||/access_token=|type=(invite|signup|magiclink)/.test(location.hash))document.documentElement.dataset.pending='1';}catch(e){}</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Church Management App</title>
@@ -109,6 +109,7 @@
             padding: 0.3rem 1rem; min-width: 3.6rem; display: inline-flex; align-items: center; justify-content: center;
         }
         #primary-app-nav .primary-nav-tab[data-primary-tab="special-access"]:hover { background-color: #f3e3a8 !important; }
+        html[data-signed="1"] #primary-app-nav .primary-nav-tab[data-primary-tab="special-access"], html[data-pending="1"] #primary-app-nav .primary-nav-tab[data-primary-tab="special-access"] { display: none !important; }
         .income-title::before { content: ""; width: 6px; height: 1.4rem; border-radius: 9999px; background: #c9a227; flex-shrink: 0; }
 
         /* ===== Income page: plain and consistent. White cards, one border colour, generous spacing ===== */
@@ -214,6 +215,7 @@
             </div>
 
             <div id="followup-header-actions" class="flex items-center gap-2 shrink-0">
+                <button type="button" id="chat-fab" onclick="switchPrimaryView('special-access')" class="hidden relative shrink-0 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-full shadow-sm flex items-center gap-1 transition" aria-label="Chat"><i data-lucide="message-circle" class="w-3.5 h-3.5"></i> Chat<span id="chat-fab-badge" class="hidden absolute -top-1.5 -right-1.5 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-red-600 text-white text-[10px] font-black flex items-center justify-center border-2 border-white"></span></button>
                 <button onclick="openAddMemberModal()" class="admin-only hidden bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 transition shadow-sm">
                     <i data-lucide="user-plus" class="w-4 h-4"></i>
                     <span class="hidden sm:inline">Add Person</span>
@@ -969,10 +971,12 @@
         <section id="primary-view-financial-vault" class="primary-view hidden space-y-3">
             <div id="hubback-financial-vault" class="hidden"><button type="button" onclick="hubBack('financial-vault')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">&larr; Back</button></div>
             <div id="hub-financial-vault" class="hidden space-y-3">
+                <button type="button" onclick="openHubChild('financial-vault','ledger')" class="w-full text-left bg-white hover:bg-slate-50 active:scale-[0.99] border border-slate-200 rounded-xl px-4 py-3 shadow-sm"><span class="block text-sm font-black text-slate-900">Finance Ledger</span><span class="block text-xs font-semibold text-slate-500">Money in, money out, banking and pending bills</span></button>
                 <button type="button" onclick="openHubChild('financial-vault','income')" class="w-full text-left bg-white hover:bg-slate-50 active:scale-[0.99] border border-slate-200 rounded-xl px-4 py-3 shadow-sm flex items-center justify-between gap-3 transition"><span class="text-sm font-bold text-slate-800">Income</span><span class="text-slate-400 text-base leading-none">&rsaquo;</span></button>
                 <button type="button" onclick="openHubChild('financial-vault','expenditures')" class="w-full text-left bg-white hover:bg-slate-50 active:scale-[0.99] border border-slate-200 rounded-xl px-4 py-3 shadow-sm flex items-center justify-between gap-3 transition" style="display:none" data-hub-admin="1"><span class="text-sm font-bold text-slate-800">Bills and Expenditure</span><span class="text-slate-400 text-base leading-none">&rsaquo;</span></button>
                 <button type="button" onclick="openHubChild('financial-vault','church-project-management')" class="w-full text-left bg-white hover:bg-slate-50 active:scale-[0.99] border border-slate-200 rounded-xl px-4 py-3 shadow-sm flex items-center justify-between gap-3 transition"><span class="text-sm font-bold text-slate-800">Projects</span><span class="text-slate-400 text-base leading-none">&rsaquo;</span></button>
             </div>
+            <div id="child-view-financial-vault-ledger" class="primary-child-view hidden"><div id="ledger-root" class="space-y-3 max-w-3xl"></div></div>
             <div id="child-view-financial-vault-income" class="primary-child-view space-y-8">
                 <div>
                 </div>
@@ -1239,11 +1243,13 @@
     <div id="set-password-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
         <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-sm w-full p-5 sm:p-6 shadow-2xl space-y-3 border border-slate-100">
             <h3 class="text-base font-black text-slate-900">Choose your password</h3>
+            <p class="text-xs font-semibold text-slate-500">Set it once. Then on any phone or computer you can sign in with just your email and this password.</p>
             <input type="email" autocomplete="username" id="new-pass-user" class="hidden">
             <input type="password" id="new-pass-1" autocomplete="new-password" placeholder="New password" class="w-full px-3.5 py-2.5 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl">
             <input type="password" id="new-pass-2" autocomplete="new-password" placeholder="Type it again" onkeydown="if(event.key==='Enter') submitNewPassword()" class="w-full px-3.5 py-2.5 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl">
             <p id="new-pass-error" class="text-xs font-semibold text-rose-600 hidden"></p>
             <button type="button" onclick="submitNewPassword()" class="w-full bg-indigo-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl">Save password and sign in</button>
+            <button type="button" onclick="document.getElementById('set-password-modal').classList.add('hidden')" class="w-full text-xs font-bold text-slate-500 py-1">Skip for now</button>
         </div>
     </div>
 
@@ -1428,7 +1434,6 @@
     </div>
 
     <!-- Toast Notification Banner -->
-    <button type="button" id="chat-fab" onclick="switchPrimaryView('special-access')" class="hidden fixed right-4 bottom-24 md:bottom-20 z-40 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-3 rounded-full shadow-lg flex items-center gap-1.5 transition" aria-label="Chat"><i data-lucide="message-circle" class="w-4 h-4"></i> Chat<span id="chat-fab-badge" class="hidden absolute -top-1.5 -right-1.5 min-w-[1.25rem] h-5 px-1 rounded-full bg-red-600 text-white text-[11px] font-black flex items-center justify-center border-2 border-white"></span></button>
     <button type="button" id="chat-alert-bar" onclick="switchPrimaryView('special-access')" class="hidden fixed top-0 inset-x-0 z-[70] bg-red-600 text-white text-[11px] font-bold py-1 text-center shadow"><span id="chat-alert-text"></span> &middot; tap to read</button>
     <div id="toast-banner" class="fixed bottom-20 md:bottom-4 right-4 left-4 sm:left-auto z-50 hidden bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 text-xs font-bold border border-slate-800">
         <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400 shrink-0"></i>
@@ -3421,8 +3426,8 @@
         }
 
         // People who have been called come first (most recently called on top); people not called yet stay at the bottom
+        // (switched off: a name stays exactly where it is after you call it; the call badge still updates)
         function sortCalledFirst(arr) {
-            arr.sort((a, b) => lastCallTime(b) - lastCallTime(a));
             return arr;
         }
 
@@ -3943,7 +3948,7 @@
                 } else {
                     const childTitles = {
                         'church-life': { departments: 'Church Departments', staff: 'Full and Part Time Staff' },
-                        'financial-vault': { income: 'Income', expenditures: 'Bills and Expenditure', 'church-project-management': 'Projects' }
+                        'financial-vault': { income: 'Income', expenditures: 'Bills and Expenditure', 'church-project-management': 'Projects', ledger: 'Finance Ledger' }
                     };
                     title.innerText = childTitles[viewId][activeChildTabs[viewId]];
                 }
@@ -3962,7 +3967,7 @@
         function switchChildTab(parentView, childTab) {
             const allowed = {
                 'church-life': ['departments', 'staff'],
-                'financial-vault': ['income', 'expenditures', 'church-project-management']
+                'financial-vault': ['ledger', 'income', 'expenditures', 'church-project-management']
             };
             if (!allowed[parentView] || !allowed[parentView].includes(childTab)) return;
 
@@ -3988,11 +3993,12 @@
 
             const childTitles = {
                 'church-life': { departments: 'Church Departments', staff: 'Full and Part Time Staff' },
-                'financial-vault': { income: 'Income', expenditures: 'Bills and Expenditure', 'church-project-management': 'Projects' }
+                'financial-vault': { income: 'Income', expenditures: 'Bills and Expenditure', 'church-project-management': 'Projects', ledger: 'Finance Ledger' }
             };
             const title = document.getElementById('active-tab-title');
             if (title) title.innerText = childTitles[parentView][childTab];
             if (childTab === 'income') showIncomeSection(currentIncomeSection);
+            if (childTab === 'ledger') loadLedger();
             if (childTab === 'expenditures') renderLedger('expenditures');
             updateDownloadVisibility();
             if (window.lucide && lucide.createIcons) lucide.createIcons();
@@ -4763,6 +4769,7 @@
             const signedIn = !!(isAdmin || accessUser);
             const regOnly = isRegistrationUser();
             document.documentElement.dataset.reg = regOnly ? '1' : '';
+            document.documentElement.dataset.signed = signedIn ? '1' : '';
             document.querySelectorAll('.primary-nav-tab').forEach(b => {
                 const t = b.dataset.primaryTab;
                 let showTab;
@@ -5066,10 +5073,100 @@
             if (canFin()) { loadPartnerRecords(); renderProjectRecordList('enterprise'); }
             updateDownloadVisibility();
         }
+        // ---------- Finance ledger: income, expenses, banking, pending bills ----------
+        const LDG_TYPES = ['Offering', 'Tithe', 'Sacrifice', 'Enterprise activities', 'Partner program'];
+        let ldg = { entries: [], kind: 'in', type: 'Offering', range: 'month', from: '', to: '', date: '' };
+        function ldgCanWrite() { return hasPerm('finance_edit'); }
+        function ldgFmt(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+        function ldgBounds() {
+            const t = new Date(); let f = '', e = '';
+            if (ldg.range === 'today') f = e = ldgFmt(t);
+            else if (ldg.range === 'week') { const a = new Date(t); a.setDate(t.getDate() - t.getDay()); const b = new Date(a); b.setDate(a.getDate() + 6); f = ldgFmt(a); e = ldgFmt(b); }
+            else if (ldg.range === 'month') { f = ldgFmt(new Date(t.getFullYear(), t.getMonth(), 1)); e = ldgFmt(new Date(t.getFullYear(), t.getMonth() + 1, 0)); }
+            else if (ldg.range === 'custom') { f = ldg.from; e = ldg.to; }
+            return [f, e];
+        }
+        async function ldgFetch(c) { const { data, error } = await c.from('church_growth').select('*').eq('id', 'finance_ledger').maybeSingle(); if (error) throw error; return (data && data.data && Array.isArray(data.data.entries)) ? data.data.entries : []; }
+        async function loadLedger() {
+            if (!ldg.date) ldg.date = ldgFmt(new Date());
+            renderLedger();
+            try { ldg.entries = await ldgFetch(await ledgerClient()); } catch (e) { showToast('Could not load finance records.'); }
+            renderLedger();
+        }
+        // Reads the latest list first, so two finance editors never overwrite each other
+        async function ldgSave(change) {
+            try {
+                const c = await ledgerClient(); const next = change(await ldgFetch(c));
+                const { error } = await c.from('church_growth').upsert({ id: 'finance_ledger', data: { entries: next }, updated_at: new Date().toISOString() });
+                if (error) throw error;
+                ldg.entries = next; renderLedger(); return true;
+            } catch (e) { showToast('Could not save: ' + ((e && e.message) || 'error')); return false; }
+        }
+        function ldgSet(k, v) { ldg[k] = v; if (k === 'range' && v === 'custom' && !ldg.from) ldg.from = ldg.to = ldgFmt(new Date()); renderLedger(); }
+        async function ldgAdd() {
+            const amount = Number(document.getElementById('ldg-amount').value);
+            const note = (document.getElementById('ldg-note') || {}).value || '';
+            const date = document.getElementById('ldg-date').value || ldgFmt(new Date());
+            if (!(amount > 0)) { showToast('Type the amount.'); return; }
+            if (ldg.kind !== 'in' && ldg.kind !== 'bank' && !note.trim()) { showToast('Write what it was for.'); return; }
+            const row = { id: 'l' + Date.now() + Math.random().toString(36).slice(2, 6), kind: ldg.kind, date, amount, label: ldg.kind === 'in' ? ldg.type : note.trim(), by: myEmail() };
+            if (await ldgSave(l => l.concat([row]))) showToast('Saved');
+        }
+        async function ldgFix(id) {
+            const cur = ldg.entries.find(x => x.id === id); if (!cur) return;
+            const v = prompt('New amount (KES)', cur.amount); if (v === null) return;
+            const n = Number(v); if (!(n > 0)) { showToast('Type a valid amount.'); return; }
+            ldgSave(l => l.map(x => x.id === id ? Object.assign({}, x, { amount: n }) : x));
+        }
+        function ldgDrop(id) { if (confirm('Delete this record?')) ldgSave(l => l.filter(x => x.id !== id)); }
+        function ldgPay(id) { ldgSave(l => l.map(x => x.id === id ? Object.assign({}, x, { kind: 'out', date: ldgFmt(new Date()) }) : x)); }
+        function renderLedger() {
+            const root = document.getElementById('ledger-root'); if (!root) return;
+            const [f, e] = ldgBounds(), w = ldgCanWrite();
+            const inR = x => (!f || x.date >= f) && (!e || x.date <= e);
+            const sum = k => ldg.entries.filter(x => x.kind === k && (k === 'bill' || inR(x))).reduce((a, x) => a + (Number(x.amount) || 0), 0);
+            const inc = sum('in'), out = sum('out'), bank = sum('bank'), pend = sum('bill');
+            const chip = (on, act, txt) => `<button type="button" onclick="${act}" class="px-3 py-1.5 rounded-lg text-xs font-bold transition ${on ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}">${txt}</button>`;
+            const box = 'bg-white border border-slate-200 rounded-2xl shadow-sm';
+            const inp = 'w-full px-3.5 py-2.5 text-sm font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-300';
+            let h = `<div class="grid grid-cols-2 gap-3">
+                <div class="rounded-xl px-3 py-2 bg-emerald-50 border border-emerald-100"><p class="text-[10px] font-bold uppercase tracking-wide text-emerald-800">Total income</p><p class="text-sm sm:text-base font-black text-emerald-700 mt-0.5 break-words">${money(inc)}</p></div>
+                <div class="rounded-xl px-3 py-2 bg-rose-50 border border-rose-100"><p class="text-[10px] font-bold uppercase tracking-wide text-rose-800">Total expenses</p><p class="text-sm sm:text-base font-black text-rose-600 mt-0.5 break-words">${money(out)}</p></div></div>
+                <div class="${box} grid grid-cols-3 divide-x divide-slate-100 text-center">
+                <div class="p-3"><p class="text-[10px] font-bold uppercase text-slate-500">Banked</p><p class="text-xs sm:text-sm font-black text-slate-800 mt-0.5 break-words">${money(bank)}</p></div>
+                <div class="p-3"><p class="text-[10px] font-bold uppercase text-slate-500">Pending bills</p><p class="text-xs sm:text-sm font-black text-slate-800 mt-0.5 break-words">${money(pend)}</p></div>
+                <div class="p-3"><p class="text-[10px] font-bold uppercase text-slate-500">Balance</p><p class="text-xs sm:text-sm font-black text-slate-800 mt-0.5 break-words">${money(inc - out)}</p></div></div>
+                <div class="flex flex-wrap items-center gap-1.5">${[['today', 'Today'], ['week', 'This week'], ['month', 'This month'], ['all', 'All'], ['custom', 'Pick dates']].map(r => chip(ldg.range === r[0], `ldgSet('range','${r[0]}')`, r[1])).join('')}</div>`;
+            if (ldg.range === 'custom') h += `<div class="flex items-center gap-2"><input type="date" value="${ldg.from}" onchange="ldgSet('from',this.value)" class="${inp}"><span class="text-xs font-bold text-slate-400">to</span><input type="date" value="${ldg.to}" onchange="ldgSet('to',this.value)" class="${inp}"></div>`;
+            if (w) {
+                const kinds = [['in', 'Income'], ['out', 'Expense'], ['bank', 'Banked'], ['bill', 'Bill']];
+                h += `<div class="${box} p-4 space-y-3"><div class="grid grid-cols-4 gap-1 bg-slate-100 p-1 rounded-xl">${kinds.map(k => `<button type="button" onclick="ldgSet('kind','${k[0]}')" class="py-2 rounded-lg text-xs font-bold transition ${ldg.kind === k[0] ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}">${k[1]}</button>`).join('')}</div>
+                <input id="ldg-date" type="date" value="${ldg.date}" onchange="ldg.date=this.value" class="${inp}">`;
+                if (ldg.kind === 'in') h += `<div class="flex flex-wrap gap-1.5">${LDG_TYPES.map(t => chip(ldg.type === t, `ldgSet('type','${t}')`, t)).join('')}</div>`;
+                else h += `<input id="ldg-note" type="text" maxlength="120" autocomplete="off" placeholder="${ldg.kind === 'bank' ? 'Bank or note (optional)' : ldg.kind === 'bill' ? 'Which bill?' : 'What was it spent on?'}" class="${inp}">`;
+                h += `<input id="ldg-amount" type="number" inputmode="decimal" min="0" step="any" placeholder="Amount (KES)" onkeydown="if(event.key==='Enter') ldgAdd()" class="${inp}">
+                <button type="button" onclick="ldgAdd()" class="w-full bg-slate-900 hover:bg-slate-800 active:scale-[0.99] text-white text-sm font-bold py-2.5 rounded-xl transition">Save</button></div>`;
+            }
+            const rows = ldg.entries.filter(x => x.kind === 'bill' || inR(x)).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+            const names = { in: 'Income', out: 'Expense', bank: 'Banked', bill: 'Pending bill' };
+            h += `<div class="${box} divide-y divide-slate-100">` + (rows.length ? rows.map(x => {
+                const cls = x.kind === 'in' ? 'text-emerald-700' : x.kind === 'out' ? 'text-rose-600' : 'text-slate-700';
+                const sign = x.kind === 'in' ? '+' : x.kind === 'out' ? '-' : '';
+                return `<div class="flex items-center gap-3 px-4 py-3"><div class="min-w-0 flex-1"><p class="text-sm font-bold text-slate-900 truncate">${escapeHtml(x.label || names[x.kind])}</p><p class="text-[11px] font-semibold text-slate-500">${escapeHtml(x.date || '')} &middot; ${names[x.kind]}</p></div>
+                <button type="button" ${w ? `onclick="ldgFix('${x.id}')"` : 'disabled'} class="text-sm font-black ${cls} text-right">${sign}${money(x.amount)}</button>
+                ${w && x.kind === 'bill' ? `<button type="button" onclick="ldgPay('${x.id}')" class="text-[11px] font-bold text-slate-700 border border-slate-200 rounded-lg px-2 py-1">Mark paid</button>` : ''}
+                ${w ? `<button type="button" onclick="ldgDrop('${x.id}')" aria-label="Delete" class="text-slate-400 hover:text-red-600 text-lg leading-none px-1">&times;</button>` : ''}</div>`;
+            }).join('') : '<p class="px-4 py-6 text-xs font-semibold text-slate-500 text-center">No records for these dates.</p>') + '</div>';
+            if (w) h += '<p class="text-[11px] font-semibold text-slate-400 text-center">Tap an amount to change it.</p>';
+            const keep = { n: (document.getElementById('ldg-note') || {}).value, a: (document.getElementById('ldg-amount') || {}).value };
+            root.innerHTML = h;
+            if (keep.n && document.getElementById('ldg-note')) document.getElementById('ldg-note').value = keep.n;
+            if (keep.a && document.getElementById('ldg-amount')) document.getElementById('ldg-amount').value = keep.a;
+        }
         // ---------- Special Access (senior pastor / department leaders) and the records chat ----------
         function canViewAll() { return isAdmin || !!(accessUser && accessUser.role === 'pastor'); }
         // ---------- Per-person section access (set by the admin when adding someone) ----------
-        function accessSections() { return [['departments', 'Departments'], ['staff', 'Staff'], ['finance', 'Finance: income, bills, projects'], ['reports', 'Reports']]; }
+        function accessSections() { return [['departments', 'Departments'], ['staff', 'Staff'], ['finance', 'Finance: income, bills, projects'], ['finance_edit', 'Finance editor: can record and change money'], ['reports', 'Reports']]; }
         function accessPermList(u) {
             if (!u) return [];
             const raw = u.permissions;
@@ -5079,7 +5176,7 @@
             return u.role === 'pastor' ? ['departments', 'staff', 'finance', 'reports'] : ['departments'];   // people added before this feature keep their old access
         }
         function hasPerm(k) { return isAdmin || (!!accessUser && accessPermList(accessUser).includes(k)); }
-        function canFin() { return hasPerm('finance'); }
+        function canFin() { return hasPerm('finance') || hasPerm('finance_edit'); }
         // ---------- Registration-only access: can only register people, nothing else ----------
         function isRegistrationUser() { return !isAdmin && !!accessUser && accessUser.role === 'registration'; }
         function regAllowedCats() {
@@ -5682,6 +5779,7 @@ function renderAccessPage() {
                     const secs = accessPermList(accessUser).filter(x => x !== 'none').join(', ') || 'none';
                     showToast('Welcome! Signed in as ' + (accessUser.role || 'staff') + '. Sections: ' + secs);
                     switchPrimaryView(isRegistrationUser() ? 'registration' : 'people-follow-up');
+                    try { if (!localStorage.getItem('kem_pw_set_' + linkEmail)) { localStorage.setItem('kem_pw_set_' + linkEmail, '1'); document.getElementById('set-password-modal').classList.remove('hidden'); } } catch (e) {}
                     return;
                 }
                 showToast(kemAccessErr || 'This email has no access yet. Ask the admin.');
@@ -5694,6 +5792,7 @@ function renderAccessPage() {
             const err = document.getElementById('new-pass-error');
             const fail = m => { err.textContent = m; err.classList.remove('hidden'); };
             if (!a) return fail('Type a password.');
+            if (a.length < 6) return fail('Your password must be at least 6 characters.');
             if (a !== b) return fail('The two passwords do not match.');
             try {
                 const c = await getAdminAuthClient();
@@ -5701,6 +5800,7 @@ function renderAccessPage() {
                 if (error) throw error;
                 document.getElementById('set-password-modal').classList.add('hidden');
                 const email = (data.user.email || '').toLowerCase();
+                try { localStorage.setItem('kem_pw_set_' + email, '1'); } catch (e) {}
                 if (email === ADMIN_EMAIL) { await c.auth.signOut(); showToast('Password updated. Sign in with it now.'); return; }
                 const { data: sd } = await c.auth.getSession();
                 if (await finishAccessLogin(c, email, true, sd.session)) { showToast('Password saved. You are signed in.'); switchPrimaryView('people-follow-up'); }
@@ -6348,7 +6448,7 @@ function renderAccessPage() {
         // The app always opens in the read-only view. Admin only after typing the password; any old saved admin login is wiped.
         try { localStorage.removeItem('kem_admin_auth_v1'); } catch (e) {}
         applyAdminUI();
-        handleAuthLink().then(() => { if (!accessUser) restoreAccessSession(); });
+        handleAuthLink().then(() => { if (!accessUser) return restoreAccessSession(); }).catch(() => {}).then(() => { delete document.documentElement.dataset.pending; });
         setTimeout(() => { try { getAdminAuthClient().catch(() => {}); } catch (e) {} }, 1500);   // get the sign-in ready before anyone taps it
 
         function openAddServiceModal(defaultDay = 'Sunday') {
