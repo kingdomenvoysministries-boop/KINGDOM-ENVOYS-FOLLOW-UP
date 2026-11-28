@@ -2537,7 +2537,7 @@
                     <button type="button" onclick="toggleMemberRow('${id}')" class="w-full text-left p-4 flex items-center gap-3">
                         <span class="w-6 shrink-0 text-xs font-black text-slate-400">${i + 1}</span>
                         <span class="min-w-0 flex-1">
-                            <span class="block text-sm font-extrabold text-slate-900 truncate">${escapeHtml(m.name)}${callStatusIconHTML(m.id)}${memberReviewReasons(m).length ? ' <span class="align-middle px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded-md text-[10px] font-bold">Review</span>' : ''}</span>
+                            <span class="block text-sm font-extrabold text-slate-900 truncate">${escapeHtml(m.name)}${memberReviewReasons(m).length ? ' <span class="align-middle px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded-md text-[10px] font-bold">Review</span>' : ''}</span>
                             <span class="block text-xs text-slate-600 mt-0.5">${escapeHtml(m.phone)}</span>
                         </span>
                         ${chevronSpanHTML(open)}
@@ -2552,7 +2552,7 @@
                 return `
                 <tr onclick="toggleMemberRow('${id}')" class="hover:bg-slate-50/80 transition cursor-pointer ${open ? 'bg-slate-50/80' : ''}">
                     <td class="p-3 font-black text-slate-400">${i + 1}</td>
-                    <td class="p-3 font-bold text-slate-900">${escapeHtml(m.name)}${callStatusIconHTML(m.id)}${memberReviewReasons(m).length ? ' <span class="px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded-md text-[10px] font-bold">Review</span>' : ''}</td>
+                    <td class="p-3 font-bold text-slate-900">${escapeHtml(m.name)}${memberReviewReasons(m).length ? ' <span class="px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded-md text-[10px] font-bold">Review</span>' : ''}</td>
                     <td class="p-3 text-slate-600 flex items-center justify-between gap-2"><span>${escapeHtml(m.phone)}</span>${chevronSpanHTML(open)}</td>
                 </tr>
                 ${open ? `<tr class="bg-slate-50/60"><td></td><td colspan="2" class="p-4">${memberDetailsHTML(m)}</td></tr>` : ''}`;
@@ -5032,7 +5032,7 @@
         // ===== PUBLIC APP ADDRESS =====
         // Put the real, live web address of this app between the quotes, e.g. 'https://mychurch.netlify.app/'
         // Links emailed to people (access links, password resets) will open THIS address.
-        const PUBLIC_APP_URL = '';
+        const PUBLIC_APP_URL = 'https://kingdomenvoysministries-boop.github.io/KEIM/';
         function isLocalAddress() {
             return /^(localhost|127\.|0\.0\.0\.0|192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(location.hostname) || location.hostname === '[::1]';
         }
