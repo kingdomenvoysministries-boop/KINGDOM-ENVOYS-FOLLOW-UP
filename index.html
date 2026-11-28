@@ -46,19 +46,24 @@
         button { -webkit-tap-highlight-color: transparent; }
         .nav-tab.bg-indigo-600,
         .nav-tab.bg-indigo-600:hover,
-        .nav-tab.bg-indigo-600:focus { background-color: #4f46e5 !important; color: #ffffff !important; }
+        .nav-tab.bg-indigo-600:focus { background-color: #c9a227 !important; color: #ffffff !important; box-shadow: 0 2px 6px rgba(154, 119, 14, 0.35); }
         .primary-nav-tab.bg-indigo-600:hover,
         .primary-nav-tab.bg-indigo-600:focus,
         .secondary-nav-tab.bg-indigo-600:hover,
-        .secondary-nav-tab.bg-indigo-600:focus { background-color: #4f46e5 !important; color: #ffffff !important; }
+        .secondary-nav-tab.bg-indigo-600:focus { background-color: #c9a227 !important; color: #ffffff !important; box-shadow: 0 2px 6px rgba(154, 119, 14, 0.35); }
         .primary-nav-tab:not(.bg-indigo-600):hover,
         .primary-nav-tab:not(.bg-indigo-600):focus,
         .secondary-nav-tab:not(.bg-indigo-600):hover,
         .secondary-nav-tab:not(.bg-indigo-600):focus { color: #475569 !important; }
         .mob-nav-btn:hover,
-        .mob-nav-btn:focus { color: #4f46e5 !important; }
+        .mob-nav-btn:focus { color: #b8921a !important; }
+        .mob-nav-btn.text-indigo-600 { color: #b8921a !important; }
+        .nav-tab:not(.bg-indigo-600):hover, .nav-tab:not(.bg-indigo-600):focus { color: #a67c00 !important; }
         .health-filter-btn.bg-indigo-600,
-        .health-filter-btn.bg-indigo-600:hover { background-color: #4f46e5 !important; color: #ffffff !important; }
+        .health-filter-btn.bg-indigo-600:hover { background-color: #c9a227 !important; color: #ffffff !important; }
+        .dept-sub-tab.bg-indigo-600, .dept-sub-tab.bg-indigo-600:hover { background-color: #c9a227 !important; color: #ffffff !important; }
+        /* Page title letters (e.g. MEMBERS DIRECTORY) in gold */
+        #active-tab-title { color: #a67c00 !important; }
         .ft-filter-btn.bg-sky-600,
         .ft-filter-btn.bg-sky-600:hover { background-color: #0284c7 !important; color: #ffffff !important; }
         .nc-filter-btn.bg-purple-600,
@@ -92,6 +97,8 @@
             background-color: #c9a227 !important; color: #ffffff !important; box-shadow: 0 2px 6px rgba(154, 119, 14, 0.35);
         }
         .income-tab.is-active, .income-tab.is-active:hover { background-color: #c9a227 !important; color: #ffffff !important; }
+        /* Registration-only people: hide every menu, they only see the registration screen */
+        html[data-reg="1"] #app-navigation, html[data-reg="1"] #chat-fab, html[data-reg="1"] #chat-alert-bar { display: none !important; }
         /* Special-access (Pastoral) button: boxed with a thick gold border */
         #primary-app-nav .primary-nav-tab[data-primary-tab="special-access"],
         #primary-app-nav .primary-nav-tab[data-primary-tab="special-access"]:hover,
@@ -120,6 +127,7 @@
         .dashboard-order-attendance { order: 6; }
         .dashboard-order-follow-up { order: 2; }
         .dashboard-order-zones { order: 5; }
+        .dashboard-order-admin { order: 7; }
         @media (max-width: 767px) {
             /* Phone: the 3 main tabs stay at the top; only the child tabs sit at the bottom */
             #app-navigation > div:last-child {
@@ -229,11 +237,11 @@
     <div id="app-navigation" class="sticky top-16 z-20 shrink-0">
         <nav id="primary-app-nav" aria-label="Main app sections" class="bg-white border-b border-slate-200">
             <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2 flex items-center gap-1.5 sm:gap-2">
-                <button type="button" onclick="switchPrimaryView('people-follow-up')" data-primary-tab="people-follow-up" class="primary-nav-tab flex-1 min-w-0 whitespace-nowrap text-center px-1.5 sm:px-3 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white shadow-sm transition">People<span class="hidden sm:inline"> &amp; Follow-up</span></button>
+                <button type="button" onclick="switchPrimaryView('people-follow-up')" data-primary-tab="people-follow-up" class="primary-nav-tab flex-1 min-w-0 whitespace-nowrap text-center px-1.5 sm:px-3 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white shadow-sm transition">Follow Up</button>
                 <button type="button" onclick="switchPrimaryView('church-life')" data-primary-tab="church-life" class="primary-nav-tab flex-1 min-w-0 whitespace-nowrap text-center px-1.5 sm:px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">Departments<span class="hidden sm:inline"> and Staff</span></button>
                 <button type="button" onclick="switchPrimaryView('financial-vault')" data-primary-tab="financial-vault" class="primary-nav-tab flex-1 min-w-0 whitespace-nowrap text-center px-1.5 sm:px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition"><span class="sm:hidden">Finance</span><span class="hidden sm:inline">Projects and Finance</span></button>
                 <button type="button" onclick="switchPrimaryView('reports')" data-primary-tab="reports" class="admin-only pastor-ok hidden primary-nav-tab flex-1 min-w-0 whitespace-nowrap text-center px-1.5 sm:px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">Reports</button>
-                <button type="button" onclick="switchPrimaryView('special-access')" data-primary-tab="special-access" class="primary-nav-tab shrink-0 whitespace-nowrap px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition" aria-label="Sign in" title="Sign in">Pastoral</button>
+                <button type="button" onclick="switchPrimaryView('access')" data-primary-tab="access" class="admin-only hidden primary-nav-tab flex-1 min-w-0 whitespace-nowrap text-center px-1.5 sm:px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">Give Access</button>
             </div>
         </nav>
         <div class="bg-white border-b border-slate-200">
@@ -405,12 +413,19 @@
                 </div>
             </div>
 
-            <section class="admin-only hidden bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
-                <div>
-                    <span class="px-2.5 py-1 bg-indigo-100 text-indigo-800 text-xs font-black rounded-lg uppercase tracking-wider">Admin Overview</span>
-                    <h2 class="text-base sm:text-lg font-extrabold text-slate-900 mt-3">Church Projects</h2>
+            <section class="dashboard-order-admin admin-only hidden bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm space-y-3">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div class="flex items-center gap-3">
+                        <span class="px-2.5 py-1 bg-slate-900 text-white text-xs font-black rounded-lg uppercase tracking-wider">Black Zone</span>
+                        <span id="stat-black-count" class="text-lg font-black text-slate-900">0</span>
+                    </div>
+                    <button type="button" onclick="switchTab('blackzone')" class="shrink-0 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition">Manage Black Zone</button>
                 </div>
-                <form id="dashboard-project-manager-form" onsubmit="saveProjectRecord(event, 'project-dashboard')" class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div class="flex items-center justify-between gap-2 pt-1">
+                    <h2 class="text-sm sm:text-base font-extrabold text-slate-900">Church Projects</h2>
+                    <button type="button" onclick="toggleDashProjectForm()" class="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition">+ Add project</button>
+                </div>
+                <div id="dashboard-project-form-wrap" class="hidden"><form id="dashboard-project-manager-form" onsubmit="saveProjectRecord(event, 'project-dashboard')" class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                     <input type="hidden" id="dashboard-project-edit-id" />
                     <div>
                         <label for="dashboard-project-name-input" class="block font-bold text-slate-700 mb-1">Project name *</label>
@@ -445,17 +460,8 @@
                         <button type="button" onclick="resetProjectForm('project-dashboard')" class="px-4 py-2.5 text-slate-600 hover:bg-slate-100 rounded-xl font-bold">Cancel</button>
                         <p id="dashboard-project-save-status" role="status" class="text-xs text-slate-600"></p>
                     </div>
-                </form>
-                <div id="dashboard-project-records-list" class="space-y-2"></div>
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                    <div>
-                        <h3 class="text-sm font-extrabold text-slate-900">Black Zone</h3>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <span id="stat-black-count" class="text-lg font-black text-slate-900">0</span>
-                        <button type="button" onclick="switchTab('blackzone')" class="shrink-0 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition">Manage Black Zone</button>
-                    </div>
-                </div>
+                </form></div>
+                <div id="dashboard-project-records-list" class="space-y-2 max-h-80 overflow-y-auto"></div>
             </section>
 
         </section>
@@ -476,6 +482,7 @@
                         <button onclick="openAddMemberModal()" class="admin-only hidden bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition">
                             <i data-lucide="user-plus" class="w-3.5 h-3.5"></i> Add Member
                         </button>
+                        <button type="button" onclick="openDuplicateChecker()" class="admin-only hidden bg-amber-50 border-2 border-amber-300 hover:bg-amber-100 text-amber-800 text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition" title="Find people listed more than once (same name or same phone)">Find duplicates</button>
                         <button type="button" onclick="deleteAllMembers()" class="admin-only hidden bg-white border-2 border-rose-300 hover:bg-rose-50 text-rose-700 text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition" title="Delete everyone in the register (admin only)">
                             <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Delete all
                         </button>
@@ -623,6 +630,17 @@
                             <input type="file" accept=".pdf,.xlsx,.xls,.csv,.txt" class="hidden" onchange="handleAttendanceUpload(event)" />
                         </label>
                         <p class="text-[11px] text-slate-500">Marks everyone in the file present for the service date chosen above.</p>
+                    </div>
+                    <div id="attendance-total-box" class="bg-white border border-emerald-200 rounded-xl p-3 space-y-2">
+                        <div class="flex flex-col sm:flex-row sm:items-end gap-2">
+                            <label class="space-y-1 sm:w-56">
+                                <span class="text-[11px] font-bold text-slate-600">Total number attended (no names needed)</span>
+                                <input id="attendance-total-input" type="number" min="0" step="1" inputmode="numeric" placeholder="e.g. 250" onkeydown="if(event.key==='Enter'){event.preventDefault();saveManualAttendanceTotal();}" class="w-full px-3 py-2.5 text-xs font-semibold bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                            </label>
+                            <button type="button" onclick="saveManualAttendanceTotal()" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-sm shrink-0">Save total</button>
+                            <button type="button" onclick="clearManualAttendanceTotal()" class="text-[11px] font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 px-3 py-2.5 rounded-xl transition shrink-0">Remove total</button>
+                        </div>
+                        <p class="text-[11px] text-slate-500">Optional. Use this when you only have the head count. It is used for the graphs and reports for the service date chosen above. Uploading a file or ticking names still works as before, and it is what zones and absences are based on.</p>
                     </div>
                     <p id="attendance-upload-status" class="text-xs font-semibold text-slate-700"></p>
                     <div class="flex justify-end">
@@ -1172,8 +1190,14 @@
             </div>
                                 </section>
 
+        <section id="primary-view-registration" class="primary-view hidden space-y-3">
+            <div id="registration-body" class="space-y-3"></div>
+        </section>
         <section id="primary-view-special-access" class="primary-view hidden space-y-3">
             <div id="special-access-body" class="space-y-3"></div>
+        </section>
+        <section id="primary-view-access" class="primary-view hidden space-y-3">
+            <div id="access-body" class="space-y-3"></div>
         </section>
         <section id="primary-view-reports" class="primary-view hidden space-y-3">
             <div id="report-controls" class="hidden">
@@ -1279,8 +1303,8 @@
                     <input type="text" id="member-name" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-800" placeholder="e.g. Grace Wanjiku" />
                 </div>
                 <div>
-                    <label class="block font-bold text-slate-700 mb-1">Phone Number *</label>
-                    <input type="tel" id="member-phone" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-800" placeholder="e.g. +254 712 345 678" />
+                    <label class="block font-bold text-slate-700 mb-1">Phone Number</label>
+                    <input type="tel" id="member-phone" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-800" placeholder="e.g. +254 712 345 678" />
                 </div>
                 <div>
                     <label class="block font-bold text-slate-700 mb-1">Location / Residence</label>
@@ -1627,7 +1651,9 @@
 
         function getAttendanceAdminName() {
             const input = document.getElementById('attendance-admin-name');
-            return (input && input.value.trim()) || getSavedAttendanceAdminName();
+            const typed = (input && input.value.trim()) || getSavedAttendanceAdminName();
+            if (typed) return typed;
+            return (accessUser && accessUser.role === 'registration') ? (accessUser.name || accessUser.email || 'Registration') : '';
         }
 
         function attendanceIsPresent(value) {
@@ -1968,7 +1994,7 @@
         // Past Sundays that actually have attendance recorded. Dates with no upload yet, or still in the
         // future, are ignored so nobody is treated as absent for a service that was never recorded.
         function getRecordedSundays() {
-            return getPastSundays().filter(s => getServiceTotal(s) > 0);
+            return getPastSundays().filter(s => getServiceNamedCount(s) > 0);
         }
 
         function getSortedWednesdays() {
@@ -1983,7 +2009,7 @@
 
         function getRecordedServices() {
             return getAllSortedServices().filter(s =>
-                String(s.service_date) <= referenceDateStr && getServiceTotal(s) > 0
+                String(s.service_date) <= referenceDateStr && getServiceNamedCount(s) > 0
             );
         }
 
@@ -2073,12 +2099,12 @@
             return { service, members: absentMembers };
         }
 
-        // First timers and new converts who attended MORE than 3 Sundays in a row (4 or more consecutive recorded Sundays)
-        // are moved to regular church members and saved to Supabase. Runs for the admin only, so one person does the saving.
+        // First timers and new converts who attended 3 Sundays in a row (3 or more consecutive recorded Sundays)
+        // are moved to regular church members and saved to Supabase automatically.
+        // Runs for everyone (admin, pastors, leaders and the registration desk), right after attendance is marked and whenever the app loads.
         function autoPromoteRegulars() {
-            if (!isAdmin) return;
             const sundays = getRecordedSundays();
-            if (sundays.length < 4) return;
+            if (sundays.length < 3) return;
             const moved = [];
             members.forEach(m => {
                 if (m.member_category !== 'FIRST_TIMER' && m.member_category !== 'NEW_CONVERT') return;
@@ -2087,16 +2113,18 @@
                     if (m.attendance && attendanceIsPresent(m.attendance[sv.id])) { run++; if (run > best) best = run; }
                     else run = 0;
                 });
-                if (best > 3) { m.member_category = 'MEMBER'; moved.push(m); }
+                if (best >= 3) { m.member_category = 'MEMBER'; moved.push(m); }
             });
             if (!moved.length) return;
             persistMembersBulk(moved);
             showToast(moved.length === 1
-                ? `${moved[0].name} attended 4+ Sundays in a row and is now a church member`
-                : `${moved.length} people attended 4+ Sundays in a row and are now church members`);
+                ? `${moved[0].name} attended 3 Sundays in a row and is now a church member`
+                : `${moved.length} people attended 3 Sundays in a row and are now church members`);
         }
 
         function renderAll() {
+            // Registration desk: only the light registration screen is drawn (much faster)
+            if (isRegistrationUser()) { try { renderRegistration(); } catch (e) {} return; }
             _totCache = {};
             try { renderAllCore(); } finally { _totCache = null; }
         }
@@ -2170,7 +2198,8 @@
 
         // Attendance total for a service
         let _totCache = null;
-        function getServiceTotal(s) {
+        // Number of NAMES marked present (upload or ticking). Zones and absences are based on this.
+        function getServiceNamedCount(s) {
             if (_totCache && _totCache[s.id] !== undefined) return _totCache[s.id];
             let total = 0;
             members.forEach(m => {
@@ -2178,6 +2207,86 @@
             });
             if (_totCache) _totCache[s.id] = total;
             return total;
+        }
+        // Total shown on graphs and reports: the typed total if there is one, otherwise the number of names marked
+        function getServiceTotal(s) {
+            const manual = getManualAttendanceTotal(s);
+            return manual > 0 ? manual : getServiceNamedCount(s);
+        }
+
+        // ---------- Typed attendance totals (head count without names) ----------
+        const ATT_TOTALS_KEY = 'kem_att_totals_v1';
+        let attTotalsState = null;
+        function getAttTotals() {
+            if (!attTotalsState) {
+                let v = null;
+                try { v = JSON.parse(localStorage.getItem(ATT_TOTALS_KEY) || 'null'); } catch (e) {}
+                attTotalsState = (v && typeof v === 'object') ? v : {};
+            }
+            return attTotalsState;
+        }
+        function getManualAttendanceTotal(s) {
+            if (!s) return 0;
+            const n = Number(getAttTotals()[String(s.id)]);
+            return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+        }
+        function persistAttTotals() {
+            try { localStorage.setItem(ATT_TOTALS_KEY, JSON.stringify(getAttTotals())); }
+            catch (e) { showToast('Could not save on this device'); }
+            if (typeof pushAttTotalsToDb === 'function') pushAttTotalsToDb();
+        }
+        async function syncAttTotalsFromDb() {
+            const c = await ledgerClient();
+            if (!c) return;
+            const { data, error } = await c.from('church_growth').select('*').eq('id', 'attendance_totals').maybeSingle();
+            if (error) throw error;
+            if (data && data.data && typeof data.data === 'object') {
+                attTotalsState = data.data;
+                try { localStorage.setItem(ATT_TOTALS_KEY, JSON.stringify(attTotalsState)); } catch (e) {}
+                try { renderAll(); } catch (e) {}
+            } else if (isAdmin && Object.keys(getAttTotals()).length) {
+                await pushAttTotalsToDb();
+            }
+        }
+        async function pushAttTotalsToDb() {
+            if (!isAdmin && !accessUser) return;
+            try {
+                const c = await ledgerClient();
+                if (!c) throw new Error('No database connection');
+                const { error } = await c.from('church_growth').upsert({ id: 'attendance_totals', data: getAttTotals(), updated_at: new Date().toISOString() });
+                if (error) throw error;
+            } catch (e) { deptSyncFail(e); }
+        }
+        function selectedAttendanceService() {
+            const sel = document.getElementById('attendance-admin-service');
+            return services.find(x => String(x.id) === String(sel && sel.value));
+        }
+        function saveManualAttendanceTotal() {
+            if (!isAdmin) { showToast('Sign in as admin to save a total.'); return; }
+            const srv = selectedAttendanceService();
+            if (!srv) { showToast('Choose the service date first.'); return; }
+            const input = document.getElementById('attendance-total-input');
+            const n = parseInt(input && input.value, 10);
+            if (!Number.isFinite(n) || n <= 0) { showToast('Enter a total number greater than 0.'); return; }
+            getAttTotals()[String(srv.id)] = n;
+            persistAttTotals();
+            renderAll();
+            const msg = `Total of ${n} saved for ${srv.day_of_week || 'service'} ${srv.service_date}.`;
+            const st = document.getElementById('attendance-upload-status');
+            if (st) st.innerText = msg;
+            showToast(msg);
+        }
+        function clearManualAttendanceTotal() {
+            if (!isAdmin) { showToast('Sign in as admin first.'); return; }
+            const srv = selectedAttendanceService();
+            if (!srv) { showToast('Choose the service date first.'); return; }
+            if (!getManualAttendanceTotal(srv)) { showToast('No typed total for this service.'); return; }
+            delete getAttTotals()[String(srv.id)];
+            persistAttTotals();
+            const input = document.getElementById('attendance-total-input');
+            if (input) input.value = '';
+            renderAll();
+            showToast('Typed total removed. Names marked present (if any) are used again.');
         }
 
         // For a date-sorted list of services: the total, and the change since the last earlier service that had attendance logged
@@ -2886,7 +2995,7 @@
                         <div class="space-y-2">
                             <div onclick="toggleCardOpen('ft', '${m.id}')" class="flex items-start justify-between gap-2 cursor-pointer">
                                 <div class="min-w-0">
-                                    <h3 class="text-sm font-black text-slate-900 truncate">${escapeHtml(m.name)}${callStatusIconHTML(m.id)}</h3>
+                                    <h3 class="text-sm font-black text-slate-900 truncate">${escapeHtml(m.name)}</h3>
                                     <p class="text-[11px] text-slate-500 mt-0.5 truncate">${escapeHtml(m.phone || '')}</p>
                                 </div>
                                 <div class="shrink-0 flex items-center gap-2">${chevronSpanHTML(open)}</div>
@@ -2975,7 +3084,7 @@
                         <div class="space-y-2">
                             <div onclick="toggleCardOpen('nc', '${m.id}')" class="flex items-start justify-between gap-2 cursor-pointer">
                                 <div class="min-w-0">
-                                    <h3 class="text-sm font-black text-slate-900 truncate">${escapeHtml(m.name)}${callStatusIconHTML(m.id)}</h3>
+                                    <h3 class="text-sm font-black text-slate-900 truncate">${escapeHtml(m.name)}</h3>
                                     <p class="text-[11px] text-slate-500 mt-0.5 truncate">${escapeHtml(m.phone || '')}</p>
                                 </div>
                                 <div class="shrink-0 flex items-center gap-2">${chevronSpanHTML(open)}</div>
@@ -3034,7 +3143,7 @@
                     : `<span class="inline-block px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800 text-[9px] font-black uppercase mb-0.5">SUN</span>`;
                 thHTML += `<th class="p-3 text-center min-w-[100px]"><div>${dayPill}</div><div>${s.service_date}</div></th>`;
             });
-            thHTML += `<th class="p-3 text-center">Call</th></tr>`;
+            thHTML += `</tr>`;
             thead.innerHTML = thHTML;
 
             let tbHTML = '';
@@ -3053,7 +3162,6 @@
                     `;
                 });
 
-                tbHTML += `<td class="p-3 text-center">${callStatusIconHTML(m.id)}</td>`;
                 tbHTML += `</tr>`;
             });
             tbody.innerHTML = tbHTML;
@@ -3095,7 +3203,10 @@
                 m.attendance && attendanceIsPresent(m.attendance[selectedService.id])
             ).length;
 
-            summary.innerHTML = `${presentCount} of ${members.length} present${adminName ? '' : ' • Enter your name to start marking'}`;
+            const manualTotal = getManualAttendanceTotal(selectedService);
+            const totalInput = document.getElementById('attendance-total-input');
+            if (totalInput && document.activeElement !== totalInput) totalInput.value = manualTotal || '';
+            summary.innerHTML = `${presentCount} of ${members.length} names marked present${manualTotal ? ` • Total recorded: ${manualTotal}` : ''}${adminName ? '' : ' • Enter your name to start marking'}`;
 
             if (!matchingMembers.length) {
                 listContainer.innerHTML = '<div class="md:col-span-2 rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-xs text-slate-500">No members match that search.</div>';
@@ -3685,9 +3796,10 @@
             const hub = document.getElementById('hub-' + parent); if (hub) hub.classList.remove('hidden');
             const bar = document.getElementById('hubback-' + parent); if (bar) bar.classList.add('hidden');
             const leaderView = !!(accessUser && accessUser.role === 'department_leader' && !isAdmin);
-            document.querySelectorAll('#hub-church-life button[onclick*="staff"], .secondary-nav-tab[data-child-tab="staff"]').forEach(b => { b.style.display = leaderView ? 'none' : ''; });
+            document.querySelectorAll('#hub-church-life button[onclick*="staff"], .secondary-nav-tab[data-child-tab="staff"]').forEach(b => { b.style.display = hasPerm('staff') ? '' : 'none'; });
+            document.querySelectorAll('#hub-church-life button[onclick*="departments"], .secondary-nav-tab[data-child-tab="departments"]').forEach(b => { b.style.display = hasPerm('departments') ? '' : 'none'; });
             const exp = document.querySelector('#hub-financial-vault [data-hub-admin]');
-            if (exp) exp.style.display = canViewAll() ? '' : 'none';
+            if (exp) exp.style.display = canFin() ? '' : 'none';
             const title = document.getElementById('active-tab-title'); if (title) title.innerText = HUB_TITLES[parent];
             updateDownloadVisibility();
         }
@@ -3715,12 +3827,12 @@
             if (!w) return;
             let show = false;
             if (hubShown[activePrimaryView]) show = false;
-            else if (activePrimaryView === 'reports') show = canViewAll();
+            else if (activePrimaryView === 'reports') show = canRep();
             else if (activePrimaryView === 'people-follow-up') show = activeTab === 'zone' || activeTab === 'members';
             else if (activePrimaryView === 'church-life') show = activeChildTabs['church-life'] === 'departments' && !!activeDept;
             else if (activePrimaryView === 'financial-vault') {
                 const c = activeChildTabs['financial-vault'];
-                show = c === 'expenditures' || (c === 'income' && canViewAll());
+                show = c === 'expenditures' || (c === 'income' && canFin());
             }
             w.classList.toggle('hidden', !show);
         }
@@ -3769,15 +3881,22 @@
                 activeChildTabs['financial-vault'] = 'church-project-management';
                 viewId = 'financial-vault';
             }
-            const allowedViews = ['people-follow-up', 'church-life', 'financial-vault', 'reports', 'special-access'];
+            if (isRegistrationUser()) viewId = 'registration';   // registration people can only ever see the registration screen
+            const allowedViews = ['people-follow-up', 'church-life', 'financial-vault', 'reports', 'special-access', 'registration', 'access'];
             if (!allowedViews.includes(viewId)) return;
+            if (viewId === 'registration' && !isRegistrationUser()) return;
+            if (viewId === 'access' && !isAdmin) return;
             if (viewId === 'special-access' && !isAdmin && !accessUser) { openAdminLogin(); return; }
-            if (['church-life', 'financial-vault'].includes(viewId) && !(isAdmin || (accessUser && accessUser.role === 'pastor'))) {
-                showToast('Sign in to open this section.');
+            if (viewId === 'church-life' && !(hasPerm('departments') || hasPerm('staff'))) {
+                showToast(accessUser ? 'You do not have access to this section.' : 'Sign in to open this section.');
                 return;
             }
-            if (viewId === 'reports' && !canViewAll()) {
-                showToast('Sign in as admin to view reports.');
+            if (viewId === 'financial-vault' && !canFin()) {
+                showToast(accessUser ? 'You do not have access to this section.' : 'Sign in to open this section.');
+                return;
+            }
+            if (viewId === 'reports' && !canRep()) {
+                showToast(accessUser ? 'You do not have access to this section.' : 'Sign in as admin to view reports.');
                 return;
             }
             const previousView = activePrimaryView;
@@ -3806,12 +3925,16 @@
                 }
             });
             const headerActions = document.getElementById('followup-header-actions');
-            if (headerActions) headerActions.classList.toggle('hidden', !inPeopleFollowUp);
+            if (headerActions) headerActions.classList.toggle('hidden', !(inPeopleFollowUp || viewId === 'registration'));
 
             const title = document.getElementById('active-tab-title');
             if (title) {
                 if (inPeopleFollowUp) {
-                    title.innerText = tabTitles[activeTab] || 'People & Follow-up';
+                    title.innerText = tabTitles[activeTab] || 'Follow Up';
+                } else if (viewId === 'registration') {
+                    title.innerText = 'Registration';
+                } else if (viewId === 'access') {
+                    title.innerText = 'Give Access';
                 } else if (viewId === 'reports') {
                     title.innerText = 'Weekly Report';
                 } else if (viewId === 'special-access') {
@@ -3829,7 +3952,9 @@
             if (legacyProjectsRequest) switchChildTab('financial-vault', 'church-project-management');
             if (inPeopleFollowUp && previousView !== viewId) renderAll();
             if (viewId === 'reports') renderWeeklyReport();
+            if (viewId === 'registration') renderRegistration();
             if (viewId === 'special-access') { renderSpecialAccess(); markChatRead(); }
+            if (viewId === 'access') renderAccessPage();
             if (window.lucide && lucide.createIcons) lucide.createIcons();
         }
 
@@ -4232,6 +4357,7 @@
                     try { await pullDeptSync(cfg); cfg.render(); } catch (e) { deptSyncFail(e); }
                 }
                 try { await syncGrowthFromDb(); } catch (e) { deptSyncFail(e); }
+                try { await syncAttTotalsFromDb(); } catch (e) { deptSyncFail(e); }
                 try { if (activePrimaryView === 'reports') renderWeeklyReport(); } catch (e) {}
             } finally { deptSyncBusy = false; }
         }
@@ -4634,15 +4760,24 @@
             if (typeof showIncomeSection === 'function' && document.getElementById('income-sec-partner')) showIncomeSection(currentIncomeSection);
             const leaderOnly = !!(accessUser && accessUser.role === 'department_leader');
             const signedIn = !!(isAdmin || accessUser);
+            const regOnly = isRegistrationUser();
+            document.documentElement.dataset.reg = regOnly ? '1' : '';
             document.querySelectorAll('.primary-nav-tab').forEach(b => {
                 const t = b.dataset.primaryTab;
-                const open = ['people-follow-up', 'special-access'].includes(t) || (t === 'church-life' && leaderOnly);
-                b.style.display = (!open && (!signedIn || leaderOnly)) ? 'none' : '';
+                let showTab;
+                if (regOnly) showTab = false;
+                else if (isAdmin) showTab = true;
+                else if (!signedIn) showTab = ['people-follow-up', 'special-access'].includes(t);
+                else if (t === 'church-life') showTab = hasPerm('departments') || hasPerm('staff');
+                else if (t === 'financial-vault') showTab = canFin();
+                else if (t === 'reports') showTab = canRep();
+                else showTab = true;
+                b.style.display = showTab ? '' : 'none';
             });
             const saArrowSVG = '<svg viewBox="0 0 32 16" class="inline-block align-middle" style="width:2.4rem;height:1rem" fill="none" stroke="#c9a227" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 8h27"/><path d="m21 1.5 7.5 6.5-7.5 6.5"/></svg>';
             const saBtn = document.querySelector('.primary-nav-tab[data-primary-tab="special-access"]');
-            const fab = document.getElementById('chat-fab'); if (fab) fab.classList.toggle('hidden', !signedIn);
-            if (signedIn) startChatAlerts(); else stopChatAlerts();
+            const fab = document.getElementById('chat-fab'); if (fab) fab.classList.toggle('hidden', !signedIn || regOnly);
+            if (signedIn && !regOnly) startChatAlerts(); else stopChatAlerts();
             if (saBtn && signedIn) saBtn.style.display = 'none';
             if (saBtn) { if (signedIn) saBtn.textContent = 'Chat'; else saBtn.textContent = 'Pastoral'; saBtn.setAttribute('aria-label', signedIn ? 'Chat' : 'Sign in'); }
             ['special-access-badge', 'special-access-heading'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = 'Chat'; });
@@ -4737,7 +4872,7 @@
             enterpriseActivityRecords = [];
             renderProjectRecords();
             applyAdminUI();
-            if (['reports', 'special-access', 'church-life', 'financial-vault'].includes(activePrimaryView)) switchPrimaryView('people-follow-up');
+            if (['reports', 'special-access', 'church-life', 'financial-vault', 'registration', 'access'].includes(activePrimaryView)) { activePrimaryView = 'people-follow-up'; document.querySelectorAll('.primary-view').forEach(el => el.classList.add('hidden')); const pv = document.getElementById('primary-view-people-follow-up'); if (pv) pv.classList.remove('hidden'); switchPrimaryView('people-follow-up'); }
             if (currentHealthFilter === 'BLACK') currentHealthFilter = 'ALL';
             if (currentFTZone === 'BLACK') currentFTZone = 'ALL';
             if (currentNCZone === 'BLACK') currentNCZone = 'ALL';
@@ -4760,7 +4895,7 @@
         function renderPartnerRecords() {
             const list = document.getElementById('partner-records-list');
             if (!list) return;
-            if (!canViewAll()) {
+            if (!canFin()) {
                 list.innerHTML = '<p class="text-xs text-slate-400">Sign in as admin to load partner records.</p>';
                 return;
             }
@@ -4793,7 +4928,7 @@
 
         async function loadPartnerRecords() {
             const list = document.getElementById('partner-records-list');
-            if (!canViewAll() || !list) return;
+            if (!canFin() || !list) return;
             list.innerHTML = '<p class="text-xs text-slate-400">Loading partner records…</p>';
             try {
                 const client = adminAuthClient || await getAdminAuthClient();
@@ -4894,7 +5029,7 @@
         function renderIncomeStats() {
             const box = document.getElementById('income-stats');
             if (!box) return;
-            const show = canViewAll();
+            const show = canFin();
             box.style.display = show ? '' : 'none';
             if (!show) return;
             const amt = r => Number(r.amount) || 0;
@@ -4917,9 +5052,9 @@
                 </div>`).join('');
         }
         function showIncomeSection(name) {
-            if (!canViewAll() && (name === 'offerings' || name === 'tithes' || name === 'enterprise')) name = 'partner';
+            if (!canFin() && (name === 'offerings' || name === 'tithes' || name === 'enterprise')) name = 'partner';
             currentIncomeSection = name;
-            const names = canViewAll() ? ['offerings', 'tithes', 'partner', 'enterprise'] : ['partner'];
+            const names = canFin() ? ['offerings', 'tithes', 'partner', 'enterprise'] : ['partner'];
             // Income is the end of the line: no list of income types, all of them show together on this page.
             document.querySelectorAll('.income-sec').forEach(el => el.classList.toggle('hidden', !names.includes(el.id.replace('income-sec-', ''))));
             const ih = document.getElementById('income-hub'); if (ih) ih.classList.add('hidden');
@@ -4927,11 +5062,182 @@
             renderIncomeStats();
             if (names.includes('offerings')) renderLedger('offerings');
             if (names.includes('tithes')) renderLedger('tithes');
-            if (canViewAll()) { loadPartnerRecords(); renderProjectRecordList('enterprise'); }
+            if (canFin()) { loadPartnerRecords(); renderProjectRecordList('enterprise'); }
             updateDownloadVisibility();
         }
         // ---------- Special Access (senior pastor / department leaders) and the records chat ----------
         function canViewAll() { return isAdmin || !!(accessUser && accessUser.role === 'pastor'); }
+        // ---------- Per-person section access (set by the admin when adding someone) ----------
+        function accessSections() { return [['departments', 'Departments'], ['staff', 'Staff'], ['finance', 'Finance: income, bills, projects'], ['reports', 'Reports']]; }
+        function accessPermList(u) {
+            if (!u) return [];
+            const raw = u.permissions;
+            if (Array.isArray(raw)) return raw;
+            if (typeof raw === 'string' && raw.trim()) return raw.split(',').map(x => x.trim()).filter(Boolean);
+            if (u.role === 'registration') return ['reg_member', 'reg_first_timer', 'reg_new_convert'];
+            return u.role === 'pastor' ? ['departments', 'staff', 'finance', 'reports'] : ['departments'];   // people added before this feature keep their old access
+        }
+        function hasPerm(k) { return isAdmin || (!!accessUser && accessPermList(accessUser).includes(k)); }
+        function canFin() { return hasPerm('finance'); }
+        // ---------- Registration-only access: can only register people, nothing else ----------
+        function isRegistrationUser() { return !isAdmin && !!accessUser && accessUser.role === 'registration'; }
+        function regAllowedCats() {
+            const map = { reg_member: 'MEMBER', reg_first_timer: 'FIRST_TIMER', reg_new_convert: 'NEW_CONVERT' };
+            return accessPermList(accessUser).filter(k => map[k]).map(k => map[k]);
+        }
+        let regSessionAdded = [];
+        function regNoteAdded(m) {
+            const label = { MEMBER: 'Member', FIRST_TIMER: 'First timer', NEW_CONVERT: 'New convert' }[m.member_category] || 'Person';
+            regSessionAdded.unshift({ name: m.name, label, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+            if (activePrimaryView === 'registration') renderRegistration();
+        }
+        let regAttServiceId = '', regAttQuery = '';
+        function regServices() {
+            const t = todayStr();
+            return getAllSortedServices().filter(x => String(x.service_date) >= CHART_START_DATE && String(x.service_date) <= t).reverse();
+        }
+        function regCurrentService() {
+            const list = regServices();
+            return list.find(x => String(x.id) === String(regAttServiceId)) || list.find(x => String(x.service_date) === todayStr()) || list[0] || null;
+        }
+        function regAddCategory() {
+            const c = regAllowedCats();
+            return c.includes('FIRST_TIMER') ? 'FIRST_TIMER' : (c[0] || '');
+        }
+        function renderRegistration() {
+            const box = document.getElementById('registration-body'); if (!box) return;
+            try { autoPromoteRegulars(); } catch (e) {}
+            if (!document.getElementById('reg-att-q')) {
+                const cats = regAllowedCats();
+                const defs = {
+                    MEMBER: ['Register a new member', 'Someone joining the church as a member', 'bg-indigo-600 hover:bg-indigo-700'],
+                    FIRST_TIMER: ['Register a first timer', 'A visitor who has come for the first time', 'bg-sky-600 hover:bg-sky-700'],
+                    NEW_CONVERT: ['Register a new convert', 'Someone who has just given their life to Christ', 'bg-purple-600 hover:bg-purple-700']
+                };
+                const buttons = cats.map(c => `<button type="button" onclick="openAddMemberModal('${c}')" class="w-full text-left ${defs[c][2]} text-white rounded-2xl px-5 py-4 shadow-md"><span class="block text-base font-black">${defs[c][0]}</span><span class="block text-xs font-medium opacity-90 mt-0.5">${defs[c][1]}</span></button>`).join('');
+                box.innerHTML = `<div class="bg-white border border-slate-200 rounded-2xl p-5 space-y-3">
+                    <h2 class="text-lg font-black text-slate-900">Mark attendance</h2>
+                    <p class="text-xs text-slate-500">Type the first 3 letters of the name, then tick the person. If the name does not appear, add them as a first timer.</p>
+                    <select id="reg-att-service" onchange="regAttServiceId=this.value;regRenderResults()" class="w-full px-3 py-2.5 text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl"></select>
+                    <input id="reg-att-q" type="search" autocomplete="off" oninput="regAttQuery=this.value;regRenderResults()" placeholder="Type a name (3 letters)..." class="w-full px-4 py-3 text-sm font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                    <div class="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 space-y-2">
+                        <p class="text-xs font-extrabold text-slate-800">Total number attended (no names needed)</p>
+                        <div class="flex items-center gap-2">
+                            <input id="reg-total-input" type="number" min="0" step="1" inputmode="numeric" placeholder="e.g. 250" onkeydown="if(event.key==='Enter'){event.preventDefault();regSaveTotal();}" class="min-w-0 flex-1 px-3 py-2.5 text-sm font-semibold bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                            <button type="button" onclick="regSaveTotal()" class="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-3 rounded-xl">Save total</button>
+                        </div>
+                        <p id="reg-total-status" class="text-[11px] font-semibold text-slate-600"></p>
+                    </div>
+                    <p id="reg-att-count" class="text-xs font-bold text-slate-600"></p>
+                    <div id="reg-att-results" class="space-y-1.5"></div>
+                </div>
+                <div class="bg-white border border-slate-200 rounded-2xl p-5 space-y-3">
+                    <h2 class="text-lg font-black text-slate-900">Registration</h2>
+                    <p class="text-xs text-slate-500">Tap a button below to register someone who has come in.</p>
+                    ${buttons || '<p class="text-sm text-slate-500">You have not been given anything to register yet. Ask the admin.</p>'}
+                </div>
+                <div class="bg-white border border-slate-200 rounded-2xl p-5 space-y-2">
+                    <h3 id="reg-done-title" class="text-sm font-extrabold text-slate-900"></h3>
+                    <div id="reg-done-list" class="space-y-2"></div>
+                </div>`;
+            }
+            const sel = document.getElementById('reg-att-service');
+            const svc = regCurrentService();
+            if (sel) {
+                const list = regServices();
+                const sig = list.map(x => x.id).join(',');
+                if (sel.dataset.sig !== sig) {
+                    sel.innerHTML = list.map(x => `<option value="${escapeHtml(String(x.id))}">${escapeHtml(x.day_of_week || 'Service')} \u2022 ${escapeHtml(x.service_date)}</option>`).join('');
+                    sel.dataset.sig = sig;
+                }
+                if (svc) sel.value = String(svc.id);
+            }
+            const done = regSessionAdded.map(r => `<div class="flex items-center justify-between border border-slate-200 rounded-xl px-3 py-2 text-xs"><span class="font-bold text-slate-800">${escapeHtml(r.name)}</span><span class="text-slate-500">${escapeHtml(r.label)} &middot; ${escapeHtml(r.time)}</span></div>`).join('');
+            const dt = document.getElementById('reg-done-title'); if (dt) dt.textContent = `Registered by you in this session (${regSessionAdded.length})`;
+            const dl = document.getElementById('reg-done-list'); if (dl) dl.innerHTML = done || '<p class="text-xs text-slate-400">No one yet.</p>';
+            regRenderResults();
+        }
+        function regSyncTotalBox(svc) {
+            const ti = document.getElementById('reg-total-input');
+            const st = document.getElementById('reg-total-status');
+            if (!ti || !svc) return;
+            const t = getManualAttendanceTotal(svc);
+            if (document.activeElement !== ti) ti.value = t || '';
+            if (st && !st.dataset.keep) st.textContent = t ? `Total recorded for this service: ${t}` : 'No total typed for this service yet.';
+        }
+        function regSaveTotal() {
+            const svc = regCurrentService();
+            if (!svc) { showToast('No service date is available yet. Ask the admin to add one.'); return; }
+            const ti = document.getElementById('reg-total-input');
+            const n = parseInt(ti && ti.value, 10);
+            if (!Number.isFinite(n) || n <= 0) { showToast('Enter a total number greater than 0.'); return; }
+            getAttTotals()[String(svc.id)] = n;
+            persistAttTotals();
+            const st = document.getElementById('reg-total-status');
+            if (st) st.textContent = `Saved: ${n} for ${svc.day_of_week || 'service'} ${svc.service_date}`;
+            showToast(`Total of ${n} saved.`);
+        }
+        function regRenderResults() {
+            const out = document.getElementById('reg-att-results'); if (!out) return;
+            const svc = regCurrentService();
+            const cnt = document.getElementById('reg-att-count');
+            if (!svc) { out.innerHTML = '<p class="text-xs text-slate-400">No service date is available yet. Ask the admin to add one.</p>'; if (cnt) cnt.textContent = ''; return; }
+            const present = members.filter(m => m.attendance && attendanceIsPresent(m.attendance[svc.id])).length;
+            if (cnt) cnt.textContent = `${present} marked present for ${svc.day_of_week || 'service'} ${svc.service_date}`;
+            regSyncTotalBox(svc);
+            const raw = String(regAttQuery || '').trim().toLowerCase();
+            if (raw.length < 3) { out.innerHTML = '<p class="text-xs text-slate-400">Start typing a name...</p>'; return; }
+            const words = raw.split(/\s+/).filter(Boolean);
+            const digits = raw.replace(/\D/g, '');
+            const found = [];
+            for (let i = 0; i < members.length && found.length < 30; i++) {
+                const m = members[i];
+                const nm = String(m.name || '').toLowerCase();
+                if (words.every(w => nm.includes(w)) || (digits.length >= 4 && String(m.phone || '').replace(/\D/g, '').includes(digits))) found.push(m);
+            }
+            found.sort((a, b) => {
+                const an = String(a.name || '').toLowerCase().startsWith(raw) ? 0 : 1, bn = String(b.name || '').toLowerCase().startsWith(raw) ? 0 : 1;
+                return an - bn || String(a.name).localeCompare(String(b.name));
+            });
+            const addCat = regAddCategory();
+            const addBtn = addCat ? `<button type="button" onclick="regAddFirstTimer()" class="w-full bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-4 py-3 rounded-xl">Name not here? Add &ldquo;${escapeHtml(String(regAttQuery).trim())}&rdquo; as a first timer</button>` : '';
+            out.innerHTML = found.map(m => {
+                const on = m.attendance && attendanceIsPresent(m.attendance[svc.id]);
+                return `<label class="flex items-center justify-between gap-3 rounded-xl border ${on ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-white'} p-3 cursor-pointer">
+                    <span class="min-w-0"><span class="block truncate text-sm font-extrabold text-slate-900">${escapeHtml(m.name)}</span><span class="block truncate text-[11px] text-slate-500">${escapeHtml(m.phone || 'No phone listed')}${m.location ? ' \u2022 ' + escapeHtml(m.location) : ''}</span></span>
+                    <input type="checkbox" ${on ? 'checked' : ''} onchange="regToggle('${escapeHtml(String(m.id))}', this.checked, this)" class="h-6 w-6 shrink-0 rounded border-slate-300 text-emerald-600" />
+                </label>`;
+            }).join('') + (found.length ? '' : '<p class="text-xs font-semibold text-slate-500">No one found with that name.</p>') + addBtn;
+        }
+        function regToggle(id, checked, el) {
+            const svc = regCurrentService();
+            const m = members.find(x => String(x.id) === String(id));
+            if (!svc || !m) return;
+            if (!m.attendance) m.attendance = {};
+            m.attendance[svc.id] = { present: !!checked, marked_by: getAttendanceAdminName(), marked_at: new Date().toISOString() };
+            if (checked && (!m.last_attended_date || String(svc.service_date) >= String(m.last_attended_date))) m.last_attended_date = svc.service_date;
+            if (el && el.closest('label')) {
+                const l = el.closest('label');
+                l.classList.toggle('border-emerald-300', !!checked); l.classList.toggle('bg-emerald-50', !!checked);
+                l.classList.toggle('border-slate-200', !checked); l.classList.toggle('bg-white', !checked);
+            }
+            const cnt = document.getElementById('reg-att-count');
+            if (cnt) cnt.textContent = `${members.filter(x => x.attendance && attendanceIsPresent(x.attendance[svc.id])).length} marked present for ${svc.day_of_week || 'service'} ${svc.service_date}`;
+            persistMemberToCloud(m);   // saved in the background, syncs to every device
+            try { autoPromoteRegulars(); } catch (e) {}   // 3 Sundays in a row: first timer / new convert becomes a member automatically
+        }
+        function regAddFirstTimer() {
+            const svc = regCurrentService();
+            const raw = String(regAttQuery || '').trim().replace(/\s+/g, ' ');
+            const name = raw.replace(/\b\w/g, c => c.toUpperCase());
+            openAddMemberModal(regAddCategory(), name, svc ? svc.service_date : '');
+        }
+        function applyRegistrationModalLimits() {
+            const sel = document.getElementById('member-category'); if (!sel) return;
+            const reg = isRegistrationUser(); const allowed = reg ? regAllowedCats() : [];
+            Array.from(sel.options).forEach(o => { const ok = !reg || allowed.includes(o.value); o.hidden = !ok; o.disabled = !ok; });
+        }
+        function canRep() { return hasPerm('reports'); }
         async function loadDeptAssignments() {
             try {
                 const c = await ledgerClient();
@@ -4962,32 +5268,51 @@
             if (!isAdmin && accessUser.role !== 'pastor') {
                 html += `<div class="${card}"><div class="space-y-1">` + (scope.length ? scope.map(m => `<div class="flex items-center justify-between border border-slate-200 rounded-xl px-3 py-2 text-xs"><span class="font-bold text-slate-800">${escapeHtml(m.name)}${callStatusIconHTML(m.id)}</span></div>`).join('') : '<p class="text-xs text-slate-400">No members have been assigned to your department yet.</p>') + `</div></div>`;
             }
-            if (isAdmin) html += renderAccessManager(card);
             html += `<div class="${card}"><h3 class="text-sm font-extrabold text-slate-900">Team chat</h3><div id="team-people" class="flex flex-wrap gap-1"></div><div id="team-log" class="space-y-2 max-h-80 overflow-y-auto text-xs"></div><form onsubmit="sendTeamMessage(event)" class="flex gap-2"><input id="team-input" type="text" maxlength="1000" autocomplete="off" placeholder="Write a message. Use @ to mention someone" class="flex-1 px-3.5 py-2.5 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl"><button class="bg-indigo-600 text-white text-xs font-bold px-4 rounded-xl">Send</button></form></div>`;
             html += `<div class="${card}"><h3 class="text-sm font-extrabold text-slate-900">Ask the records</h3><div id="chat-log" class="space-y-2 max-h-72 overflow-y-auto text-xs"></div><form onsubmit="askChat(event)" class="flex gap-2"><input id="chat-input" type="text" autocomplete="off" placeholder="e.g. how many in the red zone?" class="flex-1 px-3.5 py-2.5 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl"><button class="bg-indigo-600 text-white text-xs font-bold px-4 rounded-xl">Ask</button></form></div>`;
             box.innerHTML = html;
             renderChat();
             loadTeamChat();
-            if (isAdmin) loadAccessList();
+        }
+function renderAccessPage() {
+            const box = document.getElementById('access-body');
+            if (!box || !isAdmin) return;
+            const card = 'bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-2.5';
+            box.innerHTML = renderAccessManager(card);
+            presetAccessPerms('pastor');
+            loadAccessList();
         }
         function renderAccessManager(card) {
             if (!isAdmin) return '';
             const depts = departments.map(d => `<option>${escapeHtml(d)}</option>`).join('');
             return `<div class="${card}"><h3 class="text-sm font-extrabold text-slate-900">Give someone special access</h3>
-                <p class="text-[11px] text-slate-500">When you add someone, they get an email with a link to create their own password and sign in.</p>
                 <form onsubmit="addAccess(event)" class="grid grid-cols-1 sm:grid-cols-4 gap-2 text-xs">
                     <select id="acc-quick" onchange="fillAccessFromHead(this.value)" class="sm:col-span-4 px-3 py-2.5 bg-white border border-slate-300 rounded-xl font-semibold text-slate-700"><option value="">Quick fill: choose a department head (then type their email)</option>${Object.keys(DEPARTMENT_HEADS).map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)} – ${escapeHtml(DEPARTMENT_HEADS[d])}</option>`).join('')}</select>
                     <input id="acc-email" type="email" required placeholder="Email" class="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl">
                     <input id="acc-name" type="text" placeholder="Name" class="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl">
                     <input id="acc-title" type="text" placeholder="Title, e.g. Pastor, Deaconess" class="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl">
                     <input id="acc-duties" type="text" placeholder="Role, e.g. Finance, Choir" class="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl">
-                    <select id="acc-role" onchange="document.getElementById('acc-dept').classList.toggle('hidden', this.value==='pastor')" class="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl"><option value="pastor">Pastor (sees everything, read-only)</option><option value="department_leader">Department leader</option></select>
+                    <select id="acc-role" onchange="document.getElementById('acc-dept').classList.toggle('hidden', this.value!=='department_leader'); presetAccessPerms(this.value)" class="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl"><option value="pastor">Pastor (sees everything, read-only)</option><option value="department_leader">Department leader</option><option value="registration">Registration (can only register people)</option></select>
                     <select id="acc-dept" multiple title="Hold Ctrl or Cmd to pick more than one" class="hidden px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl">${depts}</select>
-                    <button class="bg-indigo-600 text-white font-bold rounded-xl py-2.5">Add</button>
+                    <div id="acc-reg-box" class="hidden sm:col-span-4 flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2.5 bg-sky-50 border border-sky-200 rounded-xl">
+                        <span class="font-black text-sky-900">This person can ONLY register:</span>
+                        <label class="inline-flex items-center gap-1.5 font-semibold text-slate-800"><input type="checkbox" class="acc-reg-perm" value="reg_member"> New members</label>
+                        <label class="inline-flex items-center gap-1.5 font-semibold text-slate-800"><input type="checkbox" class="acc-reg-perm" value="reg_first_timer"> First timers</label>
+                        <label class="inline-flex items-center gap-1.5 font-semibold text-slate-800"><input type="checkbox" class="acc-reg-perm" value="reg_new_convert"> New converts</label>
+                        <span class="text-slate-500 w-full">They cannot see anything else in the app.</span>
+                    </div>
+                    <div id="acc-sections-box" class="sm:col-span-4 flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-xl">
+                        <span class="font-black text-amber-900">This person can open:</span>
+                        <span class="text-slate-600 font-semibold">Follow Up (always)</span>
+                        ${accessSections().map(x => `<label class="inline-flex items-center gap-1.5 font-semibold text-slate-800"><input type="checkbox" class="acc-perm" value="${x[0]}"> ${x[1]}</label>`).join('')}
+                    </div>
+                    <button class="sm:col-span-4 bg-indigo-600 text-white font-bold rounded-xl py-2.5" id="acc-save-btn">Add</button>
                 </form><div id="access-list" class="space-y-1"></div></div>
                 <div class="${card}"><h3 class="text-sm font-extrabold text-slate-900">Assign members to departments</h3>
                 <input id="assign-search" type="text" oninput="renderAssignList()" placeholder="Search a member" class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl"><div id="assign-list" class="space-y-1 max-h-72 overflow-y-auto"></div></div>`;
         }
+        let accessOpenEmail = '';
+        const REG_PERM_LIST = [['reg_member', 'Register new members'], ['reg_first_timer', 'Register first timers'], ['reg_new_convert', 'Register new converts']];
         async function loadAccessList() {
             if (!isAdmin) return;
             const el = document.getElementById('access-list'); if (!el) return;
@@ -4995,9 +5320,54 @@
                 const c = await ledgerClient();
                 const { data, error } = await c.from('church_access').select('*').order('created_at');
                 if (error) throw error;
-                el.innerHTML = (data || []).map(r => `<div class="flex items-center justify-between border border-slate-200 rounded-xl px-3 py-2 text-xs"><span><b>${escapeHtml(accessTag(r))}</b> &middot; ${escapeHtml(r.email)} &middot; ${r.role === 'pastor' ? 'sees everything' : escapeHtml(r.department || '')}</span><span class="flex items-center gap-3 shrink-0"><button type="button" onclick="resendAccessLink('${escapeHtml(r.email)}')" class="text-indigo-600 font-bold">Send link</button><button type="button" onclick="removeAccess('${escapeHtml(r.email)}')" class="text-rose-600 font-bold">Remove</button></span></div>`).join('') || '<p class="text-xs text-slate-400">No one added yet.</p>';
+                window.__accessRows = data || [];
+                renderAccessList();
             } catch (e) { el.innerHTML = '<p class="text-xs text-rose-600">Could not load. Run the Special Access SQL in Supabase first.</p>'; }
             renderAssignList();
+        }
+        function renderAccessList() {
+            const el = document.getElementById('access-list'); if (!el) return;
+            const rows = window.__accessRows || [];
+            const permLabel = r => {
+                const l = accessPermList(r);
+                if (r.role === 'registration') { const n = REG_PERM_LIST.filter(x => l.includes(x[0])).map(x => x[1].replace('Register ', '')); return 'Registration only: ' + (n.join(', ') || 'nothing'); }
+                const names = accessSections().filter(x => l.includes(x[0])).map(x => x[1].split(':')[0]);
+                return names.length ? 'Opens: ' + names.join(', ') : 'Follow Up only';
+            };
+            el.innerHTML = rows.map(r => {
+                const em = String(r.email || '').toLowerCase();
+                const open = accessOpenEmail === em;
+                const l = accessPermList(r);
+                const defs = r.role === 'registration' ? REG_PERM_LIST : accessSections();
+                const boxes = defs.map(x => `<label class="inline-flex items-center gap-2 font-semibold text-slate-800 bg-white border border-slate-200 rounded-lg px-3 py-2"><input type="checkbox" ${l.includes(x[0]) ? 'checked' : ''} onchange="setAccessPerm('${escapeHtml(em)}','${x[0]}',this.checked)" class="h-4 w-4"> ${escapeHtml(x[1])}</label>`).join('');
+                return `<div class="border border-slate-200 rounded-xl text-xs">
+                    <div class="flex items-center justify-between gap-2 px-3 py-2 cursor-pointer" onclick="toggleAccessOpen('${escapeHtml(em)}')">
+                        <span class="min-w-0"><b>${escapeHtml(accessTag(r))}</b> &middot; ${escapeHtml(r.email)} &middot; ${r.role === 'department_leader' ? escapeHtml(r.department || '') + ' &middot; ' : ''}<span class="text-amber-800 font-semibold">${permLabel(r)}</span></span>
+                        <span class="flex items-center gap-3 shrink-0" onclick="event.stopPropagation()"><button type="button" onclick="editAccess('${escapeHtml(r.email)}')" class="text-slate-700 font-bold">Edit</button><button type="button" onclick="resendAccessLink('${escapeHtml(r.email)}')" class="text-indigo-600 font-bold">Send link</button><button type="button" onclick="removeAccess('${escapeHtml(r.email)}')" class="text-rose-600 font-bold">Remove</button>${chevronSpanHTML(open)}</span>
+                    </div>
+                    ${open ? `<div class="px-3 pb-3 pt-2 border-t border-slate-100 space-y-2"><p class="font-black text-amber-900">What ${escapeHtml(r.name || r.email)} can open (tick or untick, saved straight away):</p>${r.role === 'registration' ? '' : '<p class="text-slate-500">Follow Up is always open.</p>'}<div class="flex flex-wrap gap-2">${boxes}</div></div>` : ''}
+                </div>`;
+            }).join('') || '<p class="text-xs text-slate-400">No one added yet.</p>';
+        }
+        function toggleAccessOpen(email) { accessOpenEmail = accessOpenEmail === email ? '' : email; renderAccessList(); }
+        async function setAccessPerm(email, key, on) {
+            if (!isAdmin) return;
+            const r = (window.__accessRows || []).find(x => String(x.email).toLowerCase() === String(email).toLowerCase());
+            if (!r) return;
+            const cur = accessPermList(r).filter(k => k !== 'none');
+            const next = on ? Array.from(new Set(cur.concat([key]))) : cur.filter(k => k !== key);
+            const value = next.length ? next.join(',') : 'none';
+            try {
+                const c = await ledgerClient();
+                const { error } = await c.from('church_access').update({ permissions: value }).eq('email', r.email);
+                if (error) throw error;
+                r.permissions = value;
+                renderAccessList();
+                showToast('Saved for ' + (r.name || r.email) + '. It applies next time they open the app.');
+            } catch (e) {
+                renderAccessList();
+                showToast('Could not save: ' + ((e && e.message) || 'error') + '. If it mentions "permissions", run: alter table church_access add column permissions text;');
+            }
         }
         // Fills the access form for a department head so only the email needs typing
         function fillAccessFromHead(dept) {
@@ -5011,22 +5381,68 @@
             set('acc-title', hasTitle ? first : '');
             set('acc-duties', 'Head of ' + dept);
             set('acc-role', 'department_leader');
+            presetAccessPerms('department_leader');
             const sel = document.getElementById('acc-dept');
             if (sel) { sel.classList.remove('hidden'); Array.from(sel.options).forEach(o => { o.selected = (o.value === dept); }); }
             const em = document.getElementById('acc-email'); if (em) em.focus();
+        }
+        let editingAccessEmail = null;
+        function presetAccessPerms(role) {
+            const want = role === 'pastor' ? ['departments', 'staff', 'finance', 'reports'] : ['departments'];
+            document.querySelectorAll('.acc-perm').forEach(x => { x.checked = want.includes(x.value); });
+            document.querySelectorAll('.acc-reg-perm').forEach(x => { x.checked = true; });
+            const isReg = role === 'registration';
+            const rb = document.getElementById('acc-reg-box'); if (rb) rb.classList.toggle('hidden', !isReg);
+            const sb = document.getElementById('acc-sections-box'); if (sb) sb.classList.toggle('hidden', isReg);
+        }
+        function editAccess(email) {
+            const r = (window.__accessRows || []).find(x => String(x.email).toLowerCase() === String(email).toLowerCase());
+            if (!r) return;
+            const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+            set('acc-email', r.email); set('acc-name', r.name); set('acc-title', r.title); set('acc-duties', r.duties);
+            const roleEl = document.getElementById('acc-role'); if (roleEl) roleEl.value = r.role;
+            const sel = document.getElementById('acc-dept');
+            if (sel) {
+                sel.classList.toggle('hidden', r.role === 'pastor');
+                const mine = String(r.department || '').split(';').map(x => x.trim());
+                Array.from(sel.options).forEach(o => { o.selected = mine.includes(o.value); });
+            }
+            const perms = accessPermList(r);
+            presetAccessPerms(r.role);
+            document.querySelectorAll('.acc-perm').forEach(x => { x.checked = perms.includes(x.value); });
+            document.querySelectorAll('.acc-reg-perm').forEach(x => { x.checked = perms.includes(x.value); });
+            editingAccessEmail = String(r.email).toLowerCase();
+            const btn = document.getElementById('acc-save-btn'); if (btn) btn.textContent = 'Save changes for ' + r.email;
+            const em = document.getElementById('acc-email'); if (em) { em.scrollIntoView({ behavior: 'smooth', block: 'center' }); em.focus(); }
         }
         async function addAccess(ev) {
             ev.preventDefault();
             if (!isAdmin) return;
             const role = document.getElementById('acc-role').value;
-            const row = { email: document.getElementById('acc-email').value.trim().toLowerCase(), name: document.getElementById('acc-name').value.trim(), title: document.getElementById('acc-title').value.trim(), duties: document.getElementById('acc-duties').value.trim(), role, department: role === 'pastor' ? null : Array.from(document.getElementById('acc-dept').selectedOptions).map(o => o.value).join('; ') };
+            const picked = Array.from(document.querySelectorAll(role === 'registration' ? '.acc-reg-perm:checked' : '.acc-perm:checked')).map(x => x.value);
+            const row = { permissions: picked.length ? picked.join(',') : 'none', email: document.getElementById('acc-email').value.trim().toLowerCase(), name: document.getElementById('acc-name').value.trim(), title: document.getElementById('acc-title').value.trim(), duties: document.getElementById('acc-duties').value.trim(), role, department: role !== 'department_leader' ? null : Array.from(document.getElementById('acc-dept').selectedOptions).map(o => o.value).join('; ') };
             try {
                 const c = await ledgerClient();
-                const { error } = await c.from('church_access').upsert(row);
+                let { error } = await c.from('church_access').upsert(row);
+                if (error && /permissions/i.test(error.message || '')) {
+                    const plain = Object.assign({}, row); delete plain.permissions;
+                    ({ error } = await c.from('church_access').upsert(plain));
+                    if (error) throw error;
+                    showToast('Saved, but the section choices were NOT saved. Run the one line of SQL in Supabase (alter table church_access add column permissions text) and save again.');
+                    renderAccessPage();
+                    return;
+                }
+                if (error && /check constraint|violates/i.test(error.message || '')) {
+                    showToast('Supabase only allows the older roles. Run this in the SQL Editor, then try again: alter table church_access drop constraint if exists church_access_role_check;');
+                    return;
+                }
                 if (error) throw error;
-                renderSpecialAccess();
+                const wasEditing = editingAccessEmail === row.email;
+                editingAccessEmail = null;
+                renderAccessPage();
+                if (wasEditing) { showToast('Access updated for ' + row.email + '. No new email needed.'); return; }
                 const sent = await sendAccessLink(row.email);
-                showToast(sent.ok ? 'Access added. A link to create a password was emailed to ' + row.email : 'Access added, but the email was not sent: ' + sent.msg);
+                showToast(sent.ok ? 'Access added. A link was emailed to ' + row.email : 'Access added, but the email was not sent: ' + sent.msg);
             } catch (e) { showToast('Could not save access: ' + ((e && e.message) || 'error')); }
         }
         // ===== PUBLIC APP ADDRESS =====
@@ -5196,9 +5612,10 @@
             applyAdminUI();
             await loadDeptAssignments();   // needed first: it decides which members a leader sees
             syncDeptData();
-            if (row.role === 'pastor') { [loadPartnerRecords, loadProjectRecords, loadLedgerFromDb].forEach(f => { try { Promise.resolve(f()).catch(() => {}); } catch (e) {} }); }
+            if (hasPerm('finance')) { [loadPartnerRecords, loadProjectRecords, loadLedgerFromDb].forEach(f => { try { Promise.resolve(f()).catch(() => {}); } catch (e) {} }); }
             renderAll();
             if (activePrimaryView === 'special-access') renderSpecialAccess();
+            if (row.role === 'registration') switchPrimaryView('registration');
             return true;
         }
         async function restoreAccessSession() {
@@ -5239,9 +5656,19 @@
             if (!/type=(recovery|invite|signup|magiclink)/.test(location.hash)) return;
             const c = await getAdminAuthClient();
             if (!c) return;
+            const isReset = /type=recovery/.test(location.hash);
             const { data } = await c.auth.getSession();
             history.replaceState(null, '', location.pathname + location.search);
-            if (data && data.session) document.getElementById('set-password-modal').classList.remove('hidden');
+            if (!(data && data.session)) return;
+            // Access links (pastors / leaders): go straight in, no password needed, and stay signed in on this device.
+            // The admin account and password-reset links still ask for a password.
+            const linkEmail = String(data.session.user.email || '').toLowerCase();
+            if (!isReset && linkEmail && linkEmail !== ADMIN_EMAIL) {
+                if (await finishAccessLogin(c, linkEmail, true, data.session)) { showToast('Welcome! You are signed in.'); switchPrimaryView('people-follow-up'); return; }
+                showToast('This email has no access yet. Ask the admin.');
+                return;
+            }
+            document.getElementById('set-password-modal').classList.remove('hidden');
         }
         async function submitNewPassword() {
             const a = document.getElementById('new-pass-1').value, b = document.getElementById('new-pass-2').value;
@@ -5465,7 +5892,7 @@
             } catch (e) { return false; }
         }
         async function loadLedgerFromDb() {
-            if (!canViewAll()) return;
+            if (!canFin()) return;
             try {
                 const c = await ledgerClient();
                 if (!c) throw new Error('Admin database connection unavailable');
@@ -5672,7 +6099,14 @@
             if (!stopped) reason.value = '';
         }
 
+        function toggleDashProjectForm() {
+            const w = document.getElementById('dashboard-project-form-wrap'); if (!w) return;
+            w.classList.toggle('hidden');
+            if (!w.classList.contains('hidden')) { const n = document.getElementById('dashboard-project-name-input'); if (n) n.focus(); }
+        }
+
         function resetProjectForm(type) {
+            if (type === 'project-dashboard') { const w = document.getElementById('dashboard-project-form-wrap'); if (w) w.classList.add('hidden'); }
             const ids = projectFormIds(type);
             const form = document.getElementById(ids.form);
             if (!form) return;
@@ -5735,7 +6169,7 @@
         }
 
         async function loadProjectRecords() {
-            if (!canViewAll()) return;
+            if (!canFin()) return;
             const projectList = document.getElementById('project-records-list');
             const dashboardProjectList = document.getElementById('dashboard-project-records-list');
             const enterpriseList = document.getElementById('enterprise-records-list');
@@ -5780,6 +6214,7 @@
             if (ids.estimate && document.getElementById(ids.estimate)) document.getElementById(ids.estimate).value = record.estimated_amount === null || record.estimated_amount === undefined ? '' : record.estimated_amount;
             if (ids.details && document.getElementById(ids.details)) document.getElementById(ids.details).value = record.details || '';
             document.getElementById(ids.button).textContent = 'Save Changes';
+            if (formType === 'project-dashboard') { const w = document.getElementById('dashboard-project-form-wrap'); if (w) w.classList.remove('hidden'); }
             toggleProjectReason(formType);
             document.getElementById(ids.name).focus();
         }
@@ -5961,6 +6396,7 @@
                     <p data-role="err" class="hidden text-xs font-semibold text-rose-600">Please enter your name first.</p>
                     <button type="button" data-act="upload" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-3 rounded-xl">Upload attendance PDF / Excel / CSV</button>
                     <button type="button" data-act="manual" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-3 rounded-xl">Mark attendance manually</button>
+                    <button type="button" data-act="total" class="w-full bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-300 text-xs font-bold px-4 py-3 rounded-xl">Enter total number only (no names)</button>
                     <button type="button" data-act="later" class="w-full text-xs font-bold text-slate-500 py-1.5">Not now</button>
                     <input data-role="file" type="file" accept=".pdf,.xlsx,.xls,.csv,.txt" class="hidden" />
                 </div>`;
@@ -5991,6 +6427,12 @@
                 const list = document.getElementById('attendance-admin-list');
                 if (list) setTimeout(() => list.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
             };
+            q('[data-act="total"]').onclick = () => {
+                if (!prepare()) return;
+                wrap.remove();
+                const ti = document.getElementById('attendance-total-input');
+                if (ti) setTimeout(() => { ti.scrollIntoView({ behavior: 'smooth', block: 'center' }); ti.focus(); }, 200);
+            };
             q('[data-act="later"]').onclick = () => wrap.remove();
         }
 
@@ -6013,11 +6455,13 @@
             }
         }
 
-        function openAddMemberModal(defaultCategory = 'MEMBER') {
+        function openAddMemberModal(defaultCategory = 'MEMBER', prefillName = '', prefillDate = '') {
             document.getElementById('edit-member-id').value = '';
             document.getElementById('member-form').reset();
+            applyRegistrationModalLimits();
             document.getElementById('member-category').value = defaultCategory;
-            document.getElementById('member-last-date').value = referenceDateStr;
+            document.getElementById('member-last-date').value = prefillDate || referenceDateStr;
+            if (prefillName) document.getElementById('member-name').value = prefillName;
             document.getElementById('nc-salvation-date').value = referenceDateStr;
 
             if (defaultCategory === 'FIRST_TIMER') {
@@ -6073,8 +6517,12 @@
             e.preventDefault();
             const editId = document.getElementById('edit-member-id').value;
             const category = document.getElementById('member-category').value;
+            if (isRegistrationUser()) {
+                if (editId) { showToast('You can only register new people.'); return; }
+                if (!regAllowedCats().includes(category)) { showToast('You are not allowed to register that kind of person.'); return; }
+            }
             const name = document.getElementById('member-name').value.trim();
-            const phone = document.getElementById('member-phone').value.trim();
+            const phone = document.getElementById('member-phone').value.trim() || 'No Phone';
             const location = document.getElementById('member-location').value.trim();
             const dobValue = document.getElementById('member-dob').value;
             const lastDate = document.getElementById('member-last-date').value;
@@ -6125,8 +6573,22 @@
                     nc_stage: ncStage,
                     attendance: latestSrv && lastDate === latestSrv.service_date ? { [latestSrv.id]: true } : {}
                 };
+                if (isRegistrationUser()) {
+                    const rs = regCurrentService();
+                    if (rs) {
+                        newMember.attendance = { [rs.id]: { present: true, marked_by: getAttendanceAdminName(), marked_at: new Date().toISOString() } };
+                        if (!lastDate) newMember.last_attended_date = rs.service_date;
+                    }
+                }
                 members.push(newMember);
-                await persistMemberToCloud(newMember);
+                if (isRegistrationUser()) {
+                    closeMemberModal();
+                    persistMemberToCloud(newMember);   // saves in the background so the desk stays fast
+                    regNoteAdded(newMember);
+                    regAttQuery = ''; const rq = document.getElementById('reg-att-q'); if (rq) rq.value = '';
+                } else {
+                    await persistMemberToCloud(newMember);
+                }
 
                 const label = category === 'FIRST_TIMER' ? 'First Timers' : category === 'NEW_CONVERT' ? 'New Converts' : 'Directory';
                 showToast(`Added ${name} to ${label}`);
@@ -6134,6 +6596,130 @@
 
             closeMemberModal();
             renderAll();
+        }
+
+
+        // =====================================================================
+        // DUPLICATE CHECKER (admin): same name (any order) or same phone number, merge and remove the extras
+        // =====================================================================
+        function dupAll() { return (membersFull && membersFull.length ? membersFull : members); }
+        function dupFindGroups() {
+            const list = dupAll();
+            const parent = list.map((_, i) => i);
+            const find = i => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+            const union = (a, b) => { a = find(a); b = find(b); if (a !== b) parent[b] = a; };
+            const byName = new Map(), byPhone = new Map();
+            list.forEach((m, i) => {
+                const toks = fzClean(m.name);
+                if (toks.length >= 2) { const k = toks.slice().sort().join(' '); if (byName.has(k)) union(byName.get(k), i); else byName.set(k, i); }
+                const d = String(m.phone || '').replace(/\D/g, '');
+                if (d.length >= 9) { const k = d.slice(-9); if (byPhone.has(k)) union(byPhone.get(k), i); else byPhone.set(k, i); }
+            });
+            const groups = {};
+            list.forEach((m, i) => { const r = find(i); (groups[r] = groups[r] || []).push(m); });
+            return Object.values(groups).filter(g => g.length > 1);
+        }
+        function dupScore(m) {
+            const att = Object.keys(m.attendance || {}).filter(k => attendanceIsPresent(m.attendance[k])).length;
+            return att * 10 + (String(m.phone || '').replace(/\D/g, '').length >= 9 ? 5 : 0) + (m.location ? 1 : 0) + (m.dob ? 1 : 0) + (m.member_category === 'MEMBER' ? 1 : 0);
+        }
+        let dupGroupsState = [];
+        function openDuplicateChecker() {
+            if (!isAdmin) { showToast('Only the admin can do this.'); return; }
+            let wrap = document.getElementById('dup-modal');
+            if (!wrap) {
+                wrap = document.createElement('div');
+                wrap.id = 'dup-modal';
+                wrap.className = 'fixed inset-0 bg-slate-900/60 flex items-end sm:items-center justify-center p-3';
+                wrap.style.zIndex = '99999';
+                document.body.appendChild(wrap);
+            }
+            dupGroupsState = dupFindGroups().map(g => g.sort((a, b) => dupScore(b) - dupScore(a)));
+            dupRender();
+        }
+        function dupClose() { const w = document.getElementById('dup-modal'); if (w) w.remove(); }
+        function dupRender() {
+            const wrap = document.getElementById('dup-modal'); if (!wrap) return;
+            const esc = escapeHtml;
+            const groups = dupGroupsState;
+            const body = groups.length ? groups.map((g, gi) => `
+                <div class="bg-white border border-slate-200 rounded-xl p-3 space-y-2">
+                    <p class="text-[11px] font-black uppercase tracking-wider text-amber-800">Group ${gi + 1} &bull; ${g.length} records</p>
+                    ${g.map((m, mi) => {
+                        const att = Object.keys(m.attendance || {}).filter(k => attendanceIsPresent(m.attendance[k])).length;
+                        return `<label class="flex items-start gap-3 p-2.5 rounded-lg border border-slate-200 cursor-pointer">
+                            <input type="radio" name="dup-keep-${gi}" value="${esc(String(m.id))}" ${mi === 0 ? 'checked' : ''} class="mt-1" />
+                            <span class="text-xs min-w-0">
+                                <span class="block font-bold text-slate-900">${esc(m.name)} <span class="font-semibold text-slate-400">${esc(CATEGORY_LABELS[m.member_category || 'MEMBER'] || '')}</span></span>
+                                <span class="block text-slate-600">${esc(m.phone || 'No phone')}${m.location ? ' &bull; ' + esc(m.location) : ''}</span>
+                                <span class="block text-slate-500">Attended ${att} service${att === 1 ? '' : 's'} &bull; last ${esc(m.last_attended_date || 'N/A')}</span>
+                            </span>
+                        </label>`;
+                    }).join('')}
+                    <button type="button" onclick="dupMergeGroup(${gi})" class="w-full bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold py-2.5 rounded-xl">Keep the selected one, remove the others</button>
+                </div>`).join('') : '<p class="text-sm font-semibold text-emerald-700 text-center py-8">No repeated names or phone numbers found.</p>';
+            wrap.innerHTML = `<div class="bg-slate-50 w-full max-w-lg max-h-[88vh] rounded-2xl shadow-xl flex flex-col overflow-hidden">
+                <div class="p-4 border-b border-slate-200 bg-white flex items-start justify-between gap-3">
+                    <div>
+                        <h3 class="text-sm font-black text-slate-900">Repeated names</h3>
+                        <p class="text-xs text-slate-500 mt-1">${groups.length} group${groups.length === 1 ? '' : 's'} found (same name in any order, or same phone number). Pick the record to keep. Attendance from the removed ones is added to it first, so nothing is lost.</p>
+                    </div>
+                    <button type="button" onclick="dupClose()" class="text-slate-500 text-lg font-black leading-none px-2">&times;</button>
+                </div>
+                <div class="p-3 space-y-3 overflow-y-auto flex-1">${body}</div>
+                ${groups.length > 1 ? `<div class="p-3 border-t border-slate-200 bg-white"><button type="button" onclick="dupMergeAll()" class="w-full bg-slate-900 text-white text-xs font-bold py-2.5 rounded-xl">Merge all ${groups.length} groups (keep the first record in each)</button></div>` : ''}
+            </div>`;
+        }
+        function dupMergeInto(keep, others) {
+            others.forEach(o => {
+                Object.keys(o.attendance || {}).forEach(k => { if (attendanceIsPresent(o.attendance[k]) && !attendanceIsPresent((keep.attendance || {})[k])) { keep.attendance = keep.attendance || {}; keep.attendance[k] = o.attendance[k]; } });
+                if ((!keep.phone || keep.phone === 'No Phone') && o.phone && o.phone !== 'No Phone') keep.phone = o.phone;
+                if (!keep.location && o.location) keep.location = o.location;
+                if (!keep.dob && o.dob) keep.dob = o.dob;
+                if (o.last_attended_date && (!keep.last_attended_date || String(o.last_attended_date) > String(keep.last_attended_date))) keep.last_attended_date = o.last_attended_date;
+            });
+        }
+        async function dupDeleteIds(ids) {
+            for (let i = 0; i < ids.length; i += 100) {
+                const chunk = ids.slice(i, i + 100);
+                if (!window.supabaseClient) { chunk.forEach(id => queuePendingOp({ type: 'delete', table: 'church_members', id })); continue; }
+                try {
+                    const { error } = await window.supabaseClient.from('church_members').delete().in('id', chunk);
+                    if (error) throw error;
+                } catch (err) {
+                    chunk.forEach(id => queuePendingOp({ type: 'delete', table: 'church_members', id }));
+                    reportCloudError('delete', err);
+                }
+            }
+        }
+        async function dupDoGroup(gi, keepId) {
+            const g = dupGroupsState[gi]; if (!g) return 0;
+            const keep = g.find(m => String(m.id) === String(keepId)) || g[0];
+            const others = g.filter(m => m !== keep);
+            dupMergeInto(keep, others);
+            const ids = others.map(m => m.id);
+            const idSet = new Set(ids.map(String));
+            members = members.filter(m => !idSet.has(String(m.id)));
+            if (membersFull && membersFull.length) membersFull = membersFull.filter(m => !idSet.has(String(m.id)));
+            await persistMemberToCloud(keep);
+            await dupDeleteIds(ids);
+            return ids.length;
+        }
+        async function dupMergeGroup(gi) {
+            const sel = document.querySelector(`input[name="dup-keep-${gi}"]:checked`);
+            const n = await dupDoGroup(gi, sel ? sel.value : '');
+            dupGroupsState.splice(gi, 1);
+            showToast(`${n} repeated record${n === 1 ? '' : 's'} removed`);
+            dupRender(); renderAll();
+        }
+        async function dupMergeAll() {
+            if (!confirm(`Merge all ${dupGroupsState.length} groups? In each group the record you selected is kept (the first one unless you changed it) and the others are removed.`)) return;
+            let total = 0;
+            const picks = dupGroupsState.map((g, gi) => { const sel = document.querySelector(`input[name="dup-keep-${gi}"]:checked`); return sel ? sel.value : String(g[0].id); });
+            for (let gi = 0; gi < dupGroupsState.length; gi++) total += await dupDoGroup(gi, picks[gi]);
+            dupGroupsState = [];
+            showToast(`${total} repeated record${total === 1 ? '' : 's'} removed`);
+            dupRender(); renderAll();
         }
 
         async function promoteToRegularMember(id) {
@@ -6357,7 +6943,7 @@
                 <div class="px-3 py-2">
                     <div class="flex items-center gap-2">
                         <div class="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-center sm:gap-4">
-                            <span class="text-sm font-bold text-slate-900 sm:w-1/3 truncate">${escapeHtml(m.name)}${callStatusIconHTML(m.id)}</span>
+                            <span class="text-sm font-bold text-slate-900 sm:w-1/3 truncate">${escapeHtml(m.name)}</span>
                             <span class="text-xs font-semibold text-slate-700 sm:w-1/3">${escapeHtml(m.phone || 'No number')}</span>
                             <span class="text-xs text-slate-500 sm:w-1/3 truncate">${escapeHtml(m.location || 'Residence not set')}</span>
                         </div>
@@ -7258,8 +7844,9 @@
                     && /attendance upload/i.test(m.previous_history_summary || '')
                     && m.attendance && Object.keys(m.attendance).length
                     && Object.keys(m.attendance).every(k => String(k) === sid));
-                if (!withAtt.length && !addedFT.length) { showToast(`There is no attendance recorded for ${label}.`); return; }
-                if (!confirm(`Delete attendance for ${label} only?\n\nThis clears the attendance of ${withAtt.length} people for this one service. All other dates stay as they are. This cannot be undone.`)) return;
+                const hadTypedTotal = getManualAttendanceTotal(srv) > 0;
+                if (!withAtt.length && !addedFT.length && !hadTypedTotal) { showToast(`There is no attendance recorded for ${label}.`); return; }
+                if (!confirm(`Delete attendance for ${label} only?\n\nThis clears the attendance of ${withAtt.length} people${hadTypedTotal ? ' and the typed total' : ''} for this one service. All other dates stay as they are. This cannot be undone.`)) return;
                 const typed = prompt('Type DELETE to confirm.');
                 if (String(typed || '').trim().toUpperCase() !== 'DELETE') { showToast('Cancelled. Nothing was deleted.'); return; }
                 let removeFT = false;
@@ -7282,6 +7869,7 @@
                         }
                     }
                 }
+                if (hadTypedTotal) { delete getAttTotals()[sid]; persistAttTotals(); const ti = document.getElementById('attendance-total-input'); if (ti) ti.value = ''; }
                 const toClear = members.filter(m => m.attendance && Object.prototype.hasOwnProperty.call(m.attendance, srv.id));
                 toClear.forEach(m => {
                     delete m.attendance[srv.id];
@@ -7971,9 +8559,9 @@
             if (!body || !sel) return;
             const note = document.getElementById('reports-admin-signin-note');
             const controls = document.getElementById('report-controls');
-            if (note) note.classList.toggle('hidden', canViewAll());
-            if (controls) controls.classList.toggle('hidden', !canViewAll());
-            if (!canViewAll()) { body.innerHTML = ''; return; }
+            if (note) note.classList.toggle('hidden', canRep());
+            if (controls) controls.classList.toggle('hidden', !canRep());
+            if (!canRep()) { body.innerHTML = ''; return; }
             rebuildCallsIndex();
 
             const esc = escapeHtml;
