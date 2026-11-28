@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" class="h-full">
 <head>
+<script>window.KEM_HASH0 = location.hash || '';</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Church Management App</title>
@@ -5593,6 +5594,7 @@ function renderAccessPage() {
 
         // ---------- Special access sign-in: own password, stay signed in, reset link ----------
         const ACCESS_SESSION_KEY = 'kem_access_session_v1';
+        let kemAccessErr = '';
         function saveAccessSession(sess) {
             try { localStorage.setItem(ACCESS_SESSION_KEY, JSON.stringify({ access_token: sess.access_token, refresh_token: sess.refresh_token })); } catch (e) {}
         }
@@ -5604,8 +5606,10 @@ function renderAccessPage() {
             });
         }
         async function finishAccessLogin(c, email, remember, sess) {
-            const { data: row } = await c.from('church_access').select('*').eq('email', String(email || '').toLowerCase()).maybeSingle();
-            if (!row) { await c.auth.signOut(); try { localStorage.removeItem(ACCESS_SESSION_KEY); } catch (e) {} return false; }
+            kemAccessErr = '';
+            const { data: row, error: rowErr } = await c.from('church_access').select('*').ilike('email', String(email || '').trim()).limit(1).maybeSingle();
+            if (rowErr) { kemAccessErr = 'Signed in as ' + email + ', but the database refused to show your access (' + (rowErr.message || 'error') + '). The admin must run the access-permission SQL in Supabase.'; return false; }
+            if (!row) { kemAccessErr = 'No access has been given to ' + email + '. Ask the admin to add this exact email in Give Access.'; await c.auth.signOut(); try { localStorage.removeItem(ACCESS_SESSION_KEY); } catch (e) {} return false; }
             accessUser = row;
             if (remember && sess) saveAccessSession(sess);
             watchAccessTokens(c);
@@ -5629,7 +5633,7 @@ function renderAccessPage() {
                 if (error || !data.session) throw (error || new Error('expired'));
                 const email = (data.session.user.email || '').toLowerCase();
                 if (email === ADMIN_EMAIL) { await c.auth.signOut(); localStorage.removeItem(ACCESS_SESSION_KEY); return; }
-                if (!(await finishAccessLogin(c, email, true, data.session))) localStorage.removeItem(ACCESS_SESSION_KEY);
+                if (!(await finishAccessLogin(c, email, true, data.session))) { if (/^No access/.test(kemAccessErr)) localStorage.removeItem(ACCESS_SESSION_KEY); else if (kemAccessErr) showToast(kemAccessErr); }
             } catch (e) {
                 console.warn('Saved sign-in could not be restored:', e);
                 if (e && /invalid|expired|not found|revoked/i.test(e.message || '')) { try { localStorage.removeItem(ACCESS_SESSION_KEY); } catch (x) {} }
@@ -5648,24 +5652,39 @@ function renderAccessPage() {
             } catch (e) { showToast('Could not send the email. Check your connection.'); }
         }
         async function handleAuthLink() {
-            if (/error_code=|error_description=/.test(location.hash)) {
-                history.replaceState(null, '', location.pathname + location.search);
+            const h = KEM_INITIAL_HASH || location.hash || '';
+            const clearHash = () => { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} };
+            if (/error_code=|error_description=/.test(h)) {
+                clearHash();
                 showToast('That link has expired or was already used. Ask the admin to send you a new one.');
                 return;
             }
-            if (!/type=(recovery|invite|signup|magiclink)/.test(location.hash)) return;
-            const c = await getAdminAuthClient();
-            if (!c) return;
-            const isReset = /type=recovery/.test(location.hash);
-            const { data } = await c.auth.getSession();
-            history.replaceState(null, '', location.pathname + location.search);
-            if (!(data && data.session)) return;
-            // Access links (pastors / leaders): go straight in, no password needed, and stay signed in on this device.
+            if (!/access_token=|type=(recovery|invite|signup|magiclink)/.test(h)) return;
+            // The database connection may still be starting: wait for it instead of giving up
+            let c = null;
+            for (let i = 0; i < 200 && !c; i++) { c = await getAdminAuthClient(); if (!c) await new Promise(r => setTimeout(r, 100)); }
+            if (!c) { showToast('Could not reach the sign-in service. Refresh the page and open the link again.'); return; }
+            const params = new URLSearchParams(h.replace(/^#/, ''));
+            const isReset = params.get('type') === 'recovery';
+            let sess = null;
+            try {
+                const at = params.get('access_token'), rt = params.get('refresh_token');
+                if (at && rt) { const r = await c.auth.setSession({ access_token: at, refresh_token: rt }); sess = r.data && r.data.session; }
+                if (!sess) { const r = await c.auth.getSession(); sess = r.data && r.data.session; }
+            } catch (e) { sess = null; }
+            clearHash();
+            if (!sess) { showToast('That sign-in link could not be used (expired, or already opened). Ask the admin to send a new one.'); return; }
+            // Access links (pastors / leaders / registration): go straight in, no password needed, and stay signed in on this device.
             // The admin account and password-reset links still ask for a password.
-            const linkEmail = String(data.session.user.email || '').toLowerCase();
+            const linkEmail = String(sess.user.email || '').toLowerCase();
             if (!isReset && linkEmail && linkEmail !== ADMIN_EMAIL) {
-                if (await finishAccessLogin(c, linkEmail, true, data.session)) { showToast('Welcome! You are signed in.'); switchPrimaryView(isRegistrationUser() ? 'registration' : 'people-follow-up'); return; }
-                showToast('This email has no access yet. Ask the admin.');
+                if (await finishAccessLogin(c, linkEmail, true, sess)) {
+                    const secs = accessPermList(accessUser).filter(x => x !== 'none').join(', ') || 'none';
+                    showToast('Welcome! Signed in as ' + (accessUser.role || 'staff') + '. Sections: ' + secs);
+                    switchPrimaryView(isRegistrationUser() ? 'registration' : 'people-follow-up');
+                    return;
+                }
+                showToast(kemAccessErr || 'This email has no access yet. Ask the admin.');
                 return;
             }
             document.getElementById('set-password-modal').classList.remove('hidden');
@@ -6325,7 +6344,7 @@ function renderAccessPage() {
             showToast(failed.length ? `Backup saved, but could not read: ${failed.join(', ')}` : 'Backup downloaded');
         }
 
-        const KEM_INITIAL_HASH = location.hash || '';
+        const KEM_INITIAL_HASH = window.KEM_HASH0 || location.hash || '';
         // The app always opens in the read-only view. Admin only after typing the password; any old saved admin login is wiped.
         try { localStorage.removeItem('kem_admin_auth_v1'); } catch (e) {}
         applyAdminUI();
